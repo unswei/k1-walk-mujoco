@@ -72,11 +72,31 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional checkpoint to initialize policy weights from.",
     )
+    parser.add_argument(
+        "--resume-ckpt",
+        type=str,
+        default=None,
+        help="Checkpoint to resume from.",
+    )
+    parser.add_argument(
+        "--resume-training-state",
+        action="store_true",
+        help="Resume optimizer/update/global_step state from --resume-ckpt (true resume).",
+    )
+    parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=None,
+        help="Override optimizer learning rate.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if args.init_ckpt is not None and args.resume_ckpt is not None:
+        raise ValueError("Use either --init-ckpt or --resume-ckpt, not both.")
+
     cfg_path = _resolve_config_path(args.config, args.milestone)
     cfg_dict = load_yaml_config(cfg_path)
     if args.init_ckpt is not None:
@@ -110,15 +130,21 @@ def main() -> int:
         device_override=args.device,
         num_envs_override=args.num_envs,
         total_timesteps_override=args.total_timesteps,
+        learning_rate_override=args.learning_rate,
         wandb_override=True if args.wandb else None,
         milestone_override=args.milestone,
         eval_suite_override=args.eval_suite,
         print_every_updates_override=args.print_every_updates,
+        resume_checkpoint_override=args.resume_ckpt,
+        resume_training_state_override=True if args.resume_training_state else None,
     )
 
     print(f"Run dir: {result['run_dir']}")
     print(f"Device: {result['device']}")
     print(f"Num envs: {result['num_envs']}")
+    print(f"Update span: {result['start_update']} -> {result['end_update']}")
+    print(f"Global step span: {result['start_global_step']} -> {result['end_global_step']}")
+    print(f"Resumed from: {result['resumed_from']}")
     print(f"Latest checkpoint: {result['latest_ckpt']}")
     print(f"Best checkpoint: {result['best_ckpt']}")
     print(f"Best nominal checkpoint: {result['best_nominal_ckpt']}")
