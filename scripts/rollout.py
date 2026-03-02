@@ -92,6 +92,29 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--record", type=str, default=None, help="Optional output MP4 path for offscreen recording.")
     parser.add_argument("--deterministic", action="store_true", help="Use mean action for checkpoint playback.")
     parser.add_argument(
+        "--policy",
+        type=str,
+        default="random",
+        choices=["random", "zero"],
+        help="Action source when --ckpt is omitted.",
+    )
+    parser.add_argument(
+        "--task-mode",
+        type=str,
+        default=None,
+        choices=["velocity", "command_tracking", "goal_pose"],
+        help="Optional task mode override for env reset.",
+    )
+    parser.add_argument("--goal-x", type=float, default=None, help="Goal X position in world frame.")
+    parser.add_argument("--goal-y", type=float, default=None, help="Goal Y position in world frame.")
+    parser.add_argument("--goal-yaw-deg", type=float, default=None, help="Goal yaw (degrees, world frame).")
+    parser.add_argument(
+        "--fixed-command",
+        type=str,
+        default=None,
+        help="Optional fixed command as 'vx,vy,yaw_rate'.",
+    )
+    parser.add_argument(
         "--device",
         type=str,
         default="auto",
@@ -161,8 +184,24 @@ def main() -> int:
     max_steps = args.max_steps if args.max_steps is not None and args.max_steps > 0 else None
 
     try:
+        fixed_command = None
+        if args.fixed_command is not None:
+            parts = [p.strip() for p in args.fixed_command.split(",")]
+            if len(parts) != 3:
+                raise ValueError("--fixed-command must be 'vx,vy,yaw_rate'")
+            fixed_command = [float(parts[0]), float(parts[1]), float(parts[2])]
+
         for ep in range(args.episodes):
-            obs, _ = env.reset(seed=args.seed + ep)
+            reset_options: dict[str, object] = {}
+            if args.task_mode is not None:
+                reset_options["task_mode"] = args.task_mode
+            if args.goal_x is not None and args.goal_y is not None:
+                reset_options["goal_xy"] = [args.goal_x, args.goal_y]
+            if args.goal_yaw_deg is not None:
+                reset_options["goal_yaw_deg"] = args.goal_yaw_deg
+            if fixed_command is not None:
+                reset_options["command"] = fixed_command
+            obs, _ = env.reset(seed=args.seed + ep, options=reset_options if reset_options else None)
             if recorder is not None:
                 recorder.capture(env.backend.model, env.backend.data)
 
@@ -174,12 +213,15 @@ def main() -> int:
 
             while not (done or trunc):
                 if max_steps is not None and steps >= max_steps:
-                    info = {"termination_reason": "max_steps"}
+                    info["termination_reason"] = "max_steps"
                     break
 
                 step_start = time.perf_counter()
                 if agent is None:
-                    action = env.action_space.sample()
+                    if args.policy == "zero":
+                        action = np.zeros(env.action_space.shape, dtype=np.float32)
+                    else:
+                        action = env.action_space.sample()
                 else:
                     obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
                     with torch.no_grad():
@@ -201,10 +243,14 @@ def main() -> int:
                         time.sleep(remaining)
 
             termination_reason = str(info.get("termination_reason", "unknown"))
+            final_distance = float(info.get("distance_to_goal", float("nan")))
+            final_yaw_err_deg = float(np.rad2deg(abs(float(info.get("yaw_error_rad", float("nan"))))))
+            is_success = bool(info.get("is_success", False))
             episode_returns.append(ep_return)
             print(
                 f"episode={ep} return={ep_return:.4f} steps={steps} "
-                f"termination_reason={termination_reason}"
+                f"termination_reason={termination_reason} success={is_success} "
+                f"distance_to_goal={final_distance:.3f} final_yaw_err_deg={final_yaw_err_deg:.2f}"
             )
 
     finally:
