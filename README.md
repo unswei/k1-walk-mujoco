@@ -97,7 +97,7 @@ Device selection for training:
 - `auto` prefers `cuda`, then `mps`, then `cpu`.
 - Recommended defaults: macOS uses smaller vectorization (`4-8` envs), Linux CUDA uses larger (`16+` envs).
 
-### Multi-GPU recipe (`magrathea-1`)
+### Multi-GPU recipe (remote Linux box)
 
 Run two independent seeds, one process per GPU:
 
@@ -109,7 +109,7 @@ CUDA_VISIBLE_DEVICES=1 python scripts/train_cleanrl_ppo.py --config configs/trai
 Suggested remote workflow:
 
 ```bash
-ssh deploy@magrathea-1
+ssh <user>@<remotehost>
 tmux new -s k1_ppo_gpu0
 # run GPU0 command, then detach
 tmux new -s k1_ppo_gpu1
