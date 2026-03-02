@@ -31,6 +31,74 @@ python scripts/fetch_assets.py
 python scripts/smoke_mujoco.py
 ```
 
+## CleanRL PPO (Toolchain B)
+
+Install CleanRL dependencies:
+
+```bash
+uv pip install -e '.[cleanrl,dev]'
+```
+
+Enable W&B optionally:
+
+```bash
+uv pip install -e '.[cleanrl,dev,wandb]'
+```
+
+Run headless training with TensorBoard logs:
+
+```bash
+python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml
+```
+
+Run a short smoke training job:
+
+```bash
+python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --total-timesteps 512 --num-envs 1 --device cpu --run-name smoke
+```
+
+Rollout random policy:
+
+```bash
+python scripts/rollout.py --episodes 1
+```
+
+Rollout checkpoint with rendering:
+
+```bash
+python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best.pt --render --episodes 1 --deterministic
+```
+
+Headless video recording:
+
+```bash
+python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best.pt --record runs/cleanrl_ppo/<run>/rollout.mp4 --episodes 1 --deterministic
+```
+
+Device selection for training:
+
+- `auto` prefers `cuda`, then `mps`, then `cpu`.
+- Recommended defaults: macOS uses smaller vectorization (`4-8` envs), Linux CUDA uses larger (`16+` envs).
+
+### Multi-GPU recipe (`magrathea-1`)
+
+Run two independent seeds, one process per GPU:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --seed 1 --num-envs 16 --run-name k1_ppo_s1_gpu0
+CUDA_VISIBLE_DEVICES=1 python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --seed 2 --num-envs 16 --run-name k1_ppo_s2_gpu1
+```
+
+Suggested remote workflow:
+
+```bash
+ssh deploy@magrathea-1
+tmux new -s k1_ppo_gpu0
+# run GPU0 command, then detach
+tmux new -s k1_ppo_gpu1
+# run GPU1 command, then detach
+```
+
 ## Design choices
 
 - PD position targets instead of direct torque actions for early stability and easier RL-library portability.
