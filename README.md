@@ -66,7 +66,24 @@ python scripts/rollout.py --episodes 1
 Rollout checkpoint with rendering:
 
 ```bash
-python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best.pt --render --episodes 1 --deterministic
+mjpython scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best.pt --render --episodes 1 --deterministic
+```
+
+On macOS, MuJoCo viewer rendering requires `mjpython` (not plain `python`).
+
+If `mjpython` fails with `Library not loaded: @rpath/libpythonX.Y.dylib`, create a venv-local symlink to the base Python shared library:
+
+```bash
+PY_VER="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+VENV_DIR="$(python -c 'import pathlib, sys; print(pathlib.Path(sys.executable).resolve().parent.parent)')"
+BASE_LIBPY="$(python -c 'import pathlib, sys; print(pathlib.Path(sys.base_prefix) / "lib" / f"libpython{sys.version_info.major}.{sys.version_info.minor}.dylib")')"
+ln -sfn "$BASE_LIBPY" "$VENV_DIR/libpython${PY_VER}.dylib"
+```
+
+Then verify:
+
+```bash
+mjpython -c "import mujoco; print('mjpython ok')"
 ```
 
 Headless video recording:

@@ -2,7 +2,12 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
+import platform
+import shlex
+import shutil
+import sys
 import time
 
 import mujoco
@@ -12,6 +17,25 @@ import torch
 from k1_walk_mujoco.envs.k1_walk_env import K1WalkEnv
 from k1_walk_mujoco.rl.cleanrl.ppo_train import ActorCritic
 from k1_walk_mujoco.rl.cleanrl.utils import select_device
+
+
+def _render_relaunch_cmd() -> str:
+    return " ".join(shlex.quote(part) for part in ["mjpython", *sys.argv])
+
+
+def _libpython_link_cmd() -> str:
+    py_ver = f"{sys.version_info.major}.{sys.version_info.minor}"
+    if "VIRTUAL_ENV" in os.environ:
+        venv_dir = Path(os.environ["VIRTUAL_ENV"]).resolve()
+    else:
+        mjpython_path = shutil.which("mjpython")
+        if mjpython_path is not None:
+            venv_dir = Path(mjpython_path).resolve().parent.parent
+        else:
+            venv_dir = Path(sys.prefix).resolve()
+    source = Path(sys.base_prefix) / "lib" / f"libpython{py_ver}.dylib"
+    target = venv_dir / f"libpython{py_ver}.dylib"
+    return f"ln -sfn {shlex.quote(str(source))} {shlex.quote(str(target))}"
 
 
 class VideoRecorder:
@@ -91,6 +115,16 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+
+    if args.render and platform.system() == "Darwin" and "MJPYTHON_BIN" not in os.environ:
+        print("macOS rendering requires `mjpython` instead of `python`.")
+        print("Re-run with:")
+        print(_render_relaunch_cmd())
+        print("")
+        print("If `mjpython` fails with `Library not loaded: @rpath/libpythonX.Y.dylib`, run:")
+        print(_libpython_link_cmd())
+        return 2
+
     env = K1WalkEnv(env_config_path=Path(args.env_config), render_mode="human" if args.render else None)
     device = select_device(args.device)
 
@@ -106,7 +140,17 @@ def main() -> int:
             viewer = mj_viewer.launch_passive(env.backend.model, env.backend.data)
         except Exception as exc:  # pragma: no cover
             print(f"Render requested but viewer is unavailable: {exc}")
+            if platform.system() == "Darwin":
+                print("")
+                print("Re-run with:")
+                print(_render_relaunch_cmd())
+                print("")
+                print("If `mjpython` fails with `Library not loaded: @rpath/libpythonX.Y.dylib`, run:")
+                print(_libpython_link_cmd())
             viewer = None
+        if viewer is None:
+            env.close()
+            return 1
 
     recorder = None
     if args.record is not None:
