@@ -102,6 +102,26 @@ Auto-progress milestones when gates pass:
 python scripts/run_milestones.py --milestone m0 --auto-progress --until-milestone m5 --seeds 1,2,3
 ```
 
+`run_milestones.py` now applies transition anti-forgetting by default on milestone handoff:
+- first 20% of the new milestone runs with mixed previous-task episodes (`--transition-mix-fraction 0.2`)
+- previous-task sampling probability defaults to `0.35` (`--transition-mix-prob 0.35`)
+
+Disable this behavior if needed:
+
+```bash
+python scripts/run_milestones.py --milestone m2 --auto-progress --disable-transition-mix
+```
+
+Hidden holdout evaluation is also enabled by default and runs against:
+- suite file: `configs/eval_suites_goal_pose_holdout.yaml`
+- suite name: `holdout`
+
+Disable holdout evaluation:
+
+```bash
+python scripts/run_milestones.py --milestone m3 --disable-holdout-eval
+```
+
 Aggregate 3-seed milestone results and evaluate promotion gates:
 
 ```bash

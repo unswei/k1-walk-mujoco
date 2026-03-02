@@ -44,6 +44,11 @@ DEFAULT_ENV_CFG: dict[str, Any] = {
     },
     "task": {
         "mode": "velocity",
+        "transition_mix": {
+            "enabled": False,
+            "previous_mode": "velocity",
+            "previous_fraction": 0.0,
+        },
         "goal": {
             "success_pos_tol_m": 0.20,
             "success_yaw_tol_deg": 12.0,
@@ -138,6 +143,7 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
         self._qpos_noise_std = float(self.cfg["env"]["reset_noise_qpos_std"])
         self._qvel_noise_std = float(self.cfg["env"]["reset_noise_qvel_std"])
         self._task_mode = str(self.cfg["task"]["mode"])
+        self._episode_task_mode = self._task_mode
 
         n = len(self.j.names)
         obs_dim = 10 + 3 * n + 3 + 4
@@ -181,7 +187,26 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
 
     @property
     def task_mode(self) -> str:
-        return self._task_mode_override or self._task_mode
+        return self._episode_task_mode
+
+    def _resolve_episode_task_mode(self) -> None:
+        if self._task_mode_override is not None:
+            self._episode_task_mode = self._task_mode_override
+            return
+
+        mode = self._task_mode
+        mix_cfg = self.cfg.get("task", {}).get("transition_mix", {})
+        if isinstance(mix_cfg, dict) and bool(mix_cfg.get("enabled", False)):
+            previous_mode = str(mix_cfg.get("previous_mode", mode))
+            mix_prob = float(mix_cfg.get("previous_fraction", 0.0))
+            mix_prob = float(np.clip(mix_prob, 0.0, 1.0))
+            if (
+                previous_mode in {"velocity", "command_tracking", "goal_pose"}
+                and previous_mode != mode
+                and float(self.np_random.random()) < mix_prob
+            ):
+                mode = previous_mode
+        self._episode_task_mode = mode
 
     def _compute_tilt(self, quat_wxyz: np.ndarray) -> float:
         qw = float(np.clip(abs(quat_wxyz[0]), 0.0, 1.0))
@@ -523,6 +548,7 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
     ) -> tuple[np.ndarray, dict[str, Any]]:
         super().reset(seed=seed)
         self._parse_reset_options(options)
+        self._resolve_episode_task_mode()
 
         self._prev_action[:] = 0.0
         self._last_tau[:] = 0.0
@@ -570,6 +596,7 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
             "command_vx": float(self._current_command[0]),
             "command_vy": float(self._current_command[1]),
             "command_yaw_rate": float(self._current_command[2]),
+            "task_mode": self.task_mode,
         }
         return obs, info
 
