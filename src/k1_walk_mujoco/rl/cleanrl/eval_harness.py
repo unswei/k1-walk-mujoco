@@ -31,6 +31,10 @@ class EpisodeEvalResult:
     time_to_goal_s: float
     steps: int
     termination_reason: str
+    command_vx_rmse_mps: float
+    command_vy_rmse_mps: float
+    command_yaw_rate_rmse_rps: float
+    command_tracking_success: bool
 
 
 def load_eval_suites(path: Path) -> dict[str, list[dict[str, Any]]]:
@@ -87,6 +91,9 @@ def _run_scenario(
         done = False
         trunc = False
         steps = 0
+        vx_sq_err: list[float] = []
+        vy_sq_err: list[float] = []
+        yaw_sq_err: list[float] = []
         while not (done or trunc) and steps < max_steps:
             obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
             with torch.no_grad():
@@ -94,6 +101,15 @@ def _run_scenario(
             action = action_t.squeeze(0).cpu().numpy()
             action = np.clip(action, env.action_space.low, env.action_space.high)
             obs, _reward, done, trunc, info = env.step(action)
+            base_vx = float(info.get("base_vx", 0.0))
+            base_vy = float(info.get("base_vy", 0.0))
+            base_yaw_rate = float(info.get("base_yaw_rate", 0.0))
+            cmd_vx = float(info.get("command_vx", 0.0))
+            cmd_vy = float(info.get("command_vy", 0.0))
+            cmd_yaw = float(info.get("command_yaw_rate", 0.0))
+            vx_sq_err.append((base_vx - cmd_vx) ** 2)
+            vy_sq_err.append((base_vy - cmd_vy) ** 2)
+            yaw_sq_err.append((base_yaw_rate - cmd_yaw) ** 2)
             steps += 1
 
         final_pos_error_m = float(info.get("distance_to_goal", np.nan))
@@ -105,6 +121,21 @@ def _run_scenario(
         reason = str(info.get("termination_reason", "unknown"))
         fall = reason in {"base_height", "tilt", "non_finite_obs", "non_finite_reward"}
         success = bool(info.get("is_success", False))
+        vx_rmse = float(np.sqrt(np.mean(vx_sq_err))) if vx_sq_err else float("nan")
+        vy_rmse = float(np.sqrt(np.mean(vy_sq_err))) if vy_sq_err else float("nan")
+        yaw_rmse = float(np.sqrt(np.mean(yaw_sq_err))) if yaw_sq_err else float("nan")
+        thresholds = scenario.get("command_rmse_thresholds", {})
+        vx_th = float(thresholds.get("vx", 0.25))
+        vy_th = float(thresholds.get("vy", 0.25))
+        yaw_th = float(thresholds.get("yaw_rate", 0.5))
+        command_ok = (
+            np.isfinite(vx_rmse)
+            and np.isfinite(vy_rmse)
+            and np.isfinite(yaw_rmse)
+            and vx_rmse <= vx_th
+            and vy_rmse <= vy_th
+            and yaw_rmse <= yaw_th
+        )
         return EpisodeEvalResult(
             success=success,
             fall=fall,
@@ -113,6 +144,10 @@ def _run_scenario(
             time_to_goal_s=time_to_goal_s,
             steps=steps,
             termination_reason=reason,
+            command_vx_rmse_mps=vx_rmse,
+            command_vy_rmse_mps=vy_rmse,
+            command_yaw_rate_rmse_rps=yaw_rmse,
+            command_tracking_success=bool(command_ok),
         )
     finally:
         env.close()
@@ -141,6 +176,10 @@ def evaluate_suite(
     pos = np.asarray([r.final_pos_error_m for r in episode_results], dtype=np.float64)
     yaw = np.asarray([r.final_yaw_error_deg for r in episode_results], dtype=np.float64)
     time_to_goal = np.asarray([r.time_to_goal_s for r in episode_results], dtype=np.float64)
+    vx_rmse = np.asarray([r.command_vx_rmse_mps for r in episode_results], dtype=np.float64)
+    vy_rmse = np.asarray([r.command_vy_rmse_mps for r in episode_results], dtype=np.float64)
+    yaw_rmse = np.asarray([r.command_yaw_rate_rmse_rps for r in episode_results], dtype=np.float64)
+    cmd_ok = np.asarray([r.command_tracking_success for r in episode_results], dtype=bool)
 
     return {
         "suite": suite_name,
@@ -150,6 +189,12 @@ def evaluate_suite(
         "median_final_pos_error_m": float(np.nanmedian(pos)) if pos.size else float("nan"),
         "median_final_yaw_error_deg": float(np.nanmedian(yaw)) if yaw.size else float("nan"),
         "median_time_to_goal_s": float(np.nanmedian(time_to_goal)) if time_to_goal.size else float("nan"),
+        "median_command_vx_rmse_mps": float(np.nanmedian(vx_rmse)) if vx_rmse.size else float("nan"),
+        "median_command_vy_rmse_mps": float(np.nanmedian(vy_rmse)) if vy_rmse.size else float("nan"),
+        "median_command_yaw_rate_rmse_rps": float(np.nanmedian(yaw_rmse))
+        if yaw_rmse.size
+        else float("nan"),
+        "command_tracking_success_rate": float(np.mean(cmd_ok)) if cmd_ok.size else 0.0,
         "termination_reasons": [r.termination_reason for r in episode_results],
         "per_episode": [
             {
@@ -160,6 +205,10 @@ def evaluate_suite(
                 "time_to_goal_s": r.time_to_goal_s,
                 "steps": r.steps,
                 "termination_reason": r.termination_reason,
+                "command_vx_rmse_mps": r.command_vx_rmse_mps,
+                "command_vy_rmse_mps": r.command_vy_rmse_mps,
+                "command_yaw_rate_rmse_rps": r.command_yaw_rate_rmse_rps,
+                "command_tracking_success": r.command_tracking_success,
             }
             for r in episode_results
         ],

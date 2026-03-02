@@ -66,6 +66,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Terminal progress print frequency in updates.",
     )
+    parser.add_argument(
+        "--init-ckpt",
+        type=str,
+        default=None,
+        help="Optional checkpoint to initialize policy weights from.",
+    )
     return parser.parse_args()
 
 
@@ -73,6 +79,8 @@ def main() -> int:
     args = parse_args()
     cfg_path = _resolve_config_path(args.config, args.milestone)
     cfg_dict = load_yaml_config(cfg_path)
+    if args.init_ckpt is not None:
+        cfg_dict["init_checkpoint"] = args.init_ckpt
 
     if args.eval_only:
         if args.ckpt is None:

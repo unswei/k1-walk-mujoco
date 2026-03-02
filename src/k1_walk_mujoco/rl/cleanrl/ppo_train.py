@@ -57,6 +57,7 @@ class PPOTrainConfig:
     milestone: str = "m3"
     env_config_path: Path = Path("configs/env_k1_walk.yaml")
     env_overrides: dict[str, Any] = field(default_factory=dict)
+    init_checkpoint: Path | None = None
     device: str = "auto"
     total_timesteps: int = 1_000_000
     num_envs: int | str | None = "auto"
@@ -95,6 +96,8 @@ class PPOTrainConfig:
         target_kl = raw.get("target_kl", default.target_kl)
         suite_path_raw = raw.get("eval_suite_path", default.eval_suite_path)
         suite_path = None if suite_path_raw in (None, "", "null") else Path(suite_path_raw)
+        init_ckpt_raw = raw.get("init_checkpoint", default.init_checkpoint)
+        init_ckpt = None if init_ckpt_raw in (None, "", "null") else Path(init_ckpt_raw)
         env_overrides = raw.get("env_overrides", default.env_overrides)
         if env_overrides is None:
             env_overrides = {}
@@ -105,6 +108,7 @@ class PPOTrainConfig:
             milestone=str(raw.get("milestone", default.milestone)),
             env_config_path=Path(env_cfg),
             env_overrides=env_overrides,
+            init_checkpoint=init_ckpt,
             device=str(raw.get("device", default.device)),
             total_timesteps=int(raw.get("total_timesteps", default.total_timesteps)),
             num_envs=raw.get("num_envs", default.num_envs),
@@ -419,6 +423,16 @@ def train_ppo(
         obs_dim = int(np.prod(obs_shape))
         action_dim = int(np.prod(action_shape))
         agent = ActorCritic(obs_dim=obs_dim, action_dim=action_dim).to(device)
+        if cfg.init_checkpoint is not None:
+            payload = torch.load(cfg.init_checkpoint, map_location=device, weights_only=False)
+            if isinstance(payload, dict) and "agent" in payload:
+                agent.load_state_dict(payload["agent"])
+            elif isinstance(payload, dict):
+                agent.load_state_dict(payload)
+            else:
+                raise RuntimeError(
+                    f"Unsupported init checkpoint format: {cfg.init_checkpoint}"
+                )
         optimizer = optim.Adam(agent.parameters(), lr=cfg.learning_rate, eps=1e-5)
 
         action_low = torch.as_tensor(envs.single_action_space.low, dtype=torch.float32, device=device)
@@ -657,6 +671,18 @@ def train_ppo(
                     )
                     metrics[f"{prefix}/median_time_to_goal_s"] = float(
                         result["median_time_to_goal_s"]
+                    )
+                    metrics[f"{prefix}/median_command_vx_rmse_mps"] = float(
+                        result.get("median_command_vx_rmse_mps", float("nan"))
+                    )
+                    metrics[f"{prefix}/median_command_vy_rmse_mps"] = float(
+                        result.get("median_command_vy_rmse_mps", float("nan"))
+                    )
+                    metrics[f"{prefix}/median_command_yaw_rate_rmse_rps"] = float(
+                        result.get("median_command_yaw_rate_rmse_rps", float("nan"))
+                    )
+                    metrics[f"{prefix}/command_tracking_success_rate"] = float(
+                        result.get("command_tracking_success_rate", 0.0)
                     )
 
                 append_eval_jsonl(

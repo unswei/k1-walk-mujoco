@@ -507,6 +507,9 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
             "command_vx": float(self._current_command[0]),
             "command_vy": float(self._current_command[1]),
             "command_yaw_rate": float(self._current_command[2]),
+            "base_vx": float(s.base_lin_vel[0]),
+            "base_vy": float(s.base_lin_vel[1]),
+            "base_yaw_rate": float(s.base_ang_vel[2]),
             "termination_reason": self._termination_reason,
             "task_mode": self.task_mode,
         }
