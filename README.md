@@ -78,16 +78,34 @@ Train from an explicit config:
 python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml
 ```
 
+Warm-start from a previous checkpoint:
+
+```bash
+python scripts/train_cleanrl_ppo.py --milestone m4 --init-ckpt runs/cleanrl_ppo/<m3_run>/checkpoints/best_nominal.pt
+```
+
 Evaluate a checkpoint on fixed eval suites:
 
 ```bash
 python scripts/train_cleanrl_ppo.py --milestone m3 --eval-only --ckpt runs/cleanrl_ppo/<run>/checkpoints/latest.pt --eval-suite easy
 ```
 
-Aggregate 3-seed milestone results (median/worst success):
+Run enforced 3-seed milestone gating:
 
 ```bash
-python scripts/milestone_report.py --suite easy --runs runs/cleanrl_ppo/<run_seed1> runs/cleanrl_ppo/<run_seed2> runs/cleanrl_ppo/<run_seed3>
+python scripts/run_milestones.py --milestone m3 --seeds 1,2,3
+```
+
+Auto-progress milestones when gates pass:
+
+```bash
+python scripts/run_milestones.py --milestone m0 --auto-progress --until-milestone m5 --seeds 1,2,3
+```
+
+Aggregate 3-seed milestone results and evaluate promotion gates:
+
+```bash
+python scripts/milestone_report.py --milestone m3 --runs runs/cleanrl_ppo/<run_seed1> runs/cleanrl_ppo/<run_seed2> runs/cleanrl_ppo/<run_seed3>
 ```
 
 Rollout random policy:

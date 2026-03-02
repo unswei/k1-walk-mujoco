@@ -56,6 +56,16 @@ jobs:
             --goal-yaw-deg 30 \
             --policy zero
 
+      - name: Milestone Gates Smoke
+        run: |
+          python scripts/run_milestones.py \
+            --milestone m0 \
+            --seeds 1 \
+            --total-timesteps 128 \
+            --device cpu \
+            --num-envs 1 \
+            --skip-determinism-check
+
   nightly-milestone-seed:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
