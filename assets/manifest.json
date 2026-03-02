@@ -1,0 +1,9 @@
+{
+  "booster_assets": {
+    "repo": "https://github.com/BoosterRobotics/booster_assets",
+    "rev": "486da0f864016676de6dab724fd60a8a551655d1",
+    "files": [
+      "robots/K1/K1_22dof.xml"
+    ]
+  }
+}
