@@ -98,3 +98,54 @@ stress:
         enabled: true
         interval_seconds_range: [4.0, 6.0]
         impulse_xy_range: [0.02, 0.06]
+
+m1_nominal:
+  - seed: 1001
+    task_mode: velocity
+    command: {vx: 0.2, vy: 0.0, yaw_rate: 0.0}
+    max_steps: 1000
+    command_rmse_thresholds: {vx: 0.25, vy: 0.35, yaw_rate: 0.8}
+  - seed: 1002
+    task_mode: velocity
+    command: {vx: 0.5, vy: 0.0, yaw_rate: 0.0}
+    max_steps: 1000
+    command_rmse_thresholds: {vx: 0.25, vy: 0.35, yaw_rate: 0.8}
+  - seed: 1003
+    task_mode: velocity
+    command: {vx: 0.8, vy: 0.0, yaw_rate: 0.0}
+    max_steps: 1000
+    command_rmse_thresholds: {vx: 0.25, vy: 0.35, yaw_rate: 0.8}
+
+m2_nominal:
+  - seed: 2001
+    task_mode: command_tracking
+    command: {vx: 0.45, vy: 0.0, yaw_rate: 0.0}
+    max_steps: 900
+    command_rmse_thresholds: {vx: 0.25, vy: 0.25, yaw_rate: 0.5}
+  - seed: 2002
+    task_mode: command_tracking
+    command: {vx: 0.4, vy: 0.2, yaw_rate: 0.3}
+    max_steps: 900
+    command_rmse_thresholds: {vx: 0.25, vy: 0.25, yaw_rate: 0.5}
+  - seed: 2003
+    task_mode: command_tracking
+    command: {vx: 0.4, vy: -0.2, yaw_rate: -0.3}
+    max_steps: 900
+    command_rmse_thresholds: {vx: 0.25, vy: 0.25, yaw_rate: 0.5}
+
+speed2m:
+  - seed: 5001
+    task_mode: goal_pose
+    goal_xy: [2.0, 0.0]
+    goal_yaw_deg: 0.0
+    max_steps: 1000
+  - seed: 5002
+    task_mode: goal_pose
+    goal_xy: [2.0, 0.0]
+    goal_yaw_deg: 45.0
+    max_steps: 1000
+  - seed: 5003
+    task_mode: goal_pose
+    goal_xy: [2.0, 0.0]
+    goal_yaw_deg: -45.0
+    max_steps: 1000

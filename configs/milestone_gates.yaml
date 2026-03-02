@@ -1,0 +1,124 @@
+m0:
+  checks:
+    - id: checkpoints_present
+      kind: all_true
+      field: latest_checkpoint_exists
+    - id: eval_json_present
+      kind: all_true
+      field: eval_json_exists
+    - id: deterministic_eval_reproducible
+      kind: all_true
+      field: deterministic_eval_ok
+
+m1:
+  checks:
+    - id: fall_rate
+      kind: suite_threshold
+      suite: m1_nominal
+      metric: fall_rate
+      aggregation: worst_max
+      op: "<"
+      threshold: 0.10
+    - id: velocity_tracking_rmse
+      kind: suite_threshold
+      suite: m1_nominal
+      metric: median_command_vx_rmse_mps
+      aggregation: worst_max
+      op: "<"
+      threshold: 0.25
+
+m2:
+  checks:
+    - id: command_tracking_success
+      kind: suite_threshold
+      suite: m2_nominal
+      metric: command_tracking_success_rate
+      aggregation: worst_min
+      op: ">"
+      threshold: 0.85
+    - id: fall_rate
+      kind: suite_threshold
+      suite: m2_nominal
+      metric: fall_rate
+      aggregation: worst_max
+      op: "<"
+      threshold: 0.12
+
+m3:
+  checks:
+    - id: success_rate
+      kind: suite_threshold
+      suite: easy
+      metric: success_rate
+      aggregation: worst_min
+      op: ">="
+      threshold: 0.80
+    - id: final_pos_error
+      kind: suite_threshold
+      suite: easy
+      metric: median_final_pos_error_m
+      aggregation: median
+      op: "<="
+      threshold: 0.20
+    - id: final_yaw_error
+      kind: suite_threshold
+      suite: easy
+      metric: median_final_yaw_error_deg
+      aggregation: median
+      op: "<="
+      threshold: 12.0
+
+m4:
+  checks:
+    - id: nominal_success
+      kind: suite_threshold
+      suite: easy
+      metric: success_rate
+      aggregation: worst_min
+      op: ">="
+      threshold: 0.88
+    - id: stress_success
+      kind: suite_threshold
+      suite: stress
+      metric: success_rate
+      aggregation: worst_min
+      op: ">="
+      threshold: 0.72
+    - id: no_catastrophic_instability
+      kind: suite_threshold
+      suite: stress
+      metric: fall_rate
+      aggregation: worst_max
+      op: "<="
+      threshold: 0.40
+
+m5:
+  checks:
+    - id: nominal_success
+      kind: suite_threshold
+      suite: easy
+      metric: success_rate
+      aggregation: worst_min
+      op: ">="
+      threshold: 0.90
+    - id: stress_success
+      kind: suite_threshold
+      suite: stress
+      metric: success_rate
+      aggregation: worst_min
+      op: ">="
+      threshold: 0.80
+    - id: speed_to_2m
+      kind: suite_threshold
+      suite: speed2m
+      metric: median_time_to_goal_s
+      aggregation: median
+      op: "<="
+      threshold: 3.5
+    - id: final_yaw_error
+      kind: suite_threshold
+      suite: speed2m
+      metric: median_final_yaw_error_deg
+      aggregation: median
+      op: "<="
+      threshold: 10.0

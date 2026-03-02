@@ -4,7 +4,7 @@ env_config_path: configs/env_k1_walk.yaml
 eval_suite_path: configs/eval_suites_goal_pose.yaml
 eval_nominal_suite: easy
 eval_stress_suite: stress
-eval_extra_suites: [medium, hard]
+eval_extra_suites: [medium, hard, speed2m]
 
 device: auto
 total_timesteps: 16000000

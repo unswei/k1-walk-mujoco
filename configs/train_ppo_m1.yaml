@@ -2,9 +2,9 @@ seed: 1
 milestone: m1
 env_config_path: configs/env_k1_walk.yaml
 eval_suite_path: configs/eval_suites_goal_pose.yaml
-eval_nominal_suite: easy
-eval_stress_suite: stress
-eval_extra_suites: [medium]
+eval_nominal_suite: m1_nominal
+eval_stress_suite: m1_nominal
+eval_extra_suites: []
 
 device: auto
 total_timesteps: 8000000
