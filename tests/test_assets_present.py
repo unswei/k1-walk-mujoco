@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import mujoco
 
 from k1_walk_mujoco.assets.paths import K1_MJCF_PATH

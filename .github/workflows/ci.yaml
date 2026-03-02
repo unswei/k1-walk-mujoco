@@ -3,9 +3,12 @@ name: ci
 on:
   push:
   pull_request:
+  schedule:
+    - cron: "0 2 * * *"
 
 jobs:
   test:
+    if: github.event_name != 'schedule'
     strategy:
       fail-fast: false
       matrix:
@@ -30,16 +33,55 @@ jobs:
       - name: Run tests
         run: pytest -q
 
-      - name: PPO Smoke
+      - name: PPO Smoke (milestone m0)
         run: |
           python scripts/train_cleanrl_ppo.py \
-            --config configs/train_ppo_cleanrl.yaml \
+            --milestone m0 \
             --run-name ci_smoke_${{ runner.os }} \
             --seed 7 \
             --device cpu \
             --num-envs 1 \
-            --total-timesteps 512
+            --total-timesteps 512 \
+            --print-every-updates 1
 
-      - name: Rollout Smoke
+      - name: Rollout Smoke (goal pose mode)
         run: |
-          python scripts/rollout.py --episodes 1 --seed 7 --max-steps 50
+          python scripts/rollout.py \
+            --episodes 1 \
+            --seed 7 \
+            --max-steps 50 \
+            --task-mode goal_pose \
+            --goal-x 1.0 \
+            --goal-y 0.2 \
+            --goal-yaw-deg 30 \
+            --policy zero
+
+  nightly-milestone-seed:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      CANDIDATE_MILESTONE: m0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev,cleanrl]'
+
+      - name: Fetch assets
+        run: python scripts/fetch_assets.py
+
+      - name: Full Seed Candidate Run
+        run: |
+          python scripts/train_cleanrl_ppo.py \
+            --milestone ${CANDIDATE_MILESTONE} \
+            --run-name nightly_${CANDIDATE_MILESTONE}_seed1 \
+            --seed 1 \
+            --device cpu \
+            --num-envs 1

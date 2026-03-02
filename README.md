@@ -45,16 +45,49 @@ Enable W&B optionally:
 uv pip install -e '.[cleanrl,dev,wandb]'
 ```
 
-Run headless training with TensorBoard logs:
+### Milestone configs
+
+Milestone training configs are provided in:
+
+- `configs/train_ppo_m0.yaml`
+- `configs/train_ppo_m1.yaml`
+- `configs/train_ppo_m2.yaml`
+- `configs/train_ppo_m3.yaml`
+- `configs/train_ppo_m4.yaml`
+- `configs/train_ppo_m5.yaml`
+
+Default env/task schema lives in `configs/env_k1_walk.yaml`.
+
+### Training commands
+
+Run headless training for a milestone:
+
+```bash
+python scripts/train_cleanrl_ppo.py --milestone m3
+```
+
+Run a short smoke job:
+
+```bash
+python scripts/train_cleanrl_ppo.py --milestone m0 --total-timesteps 512 --num-envs 1 --device cpu --run-name smoke
+```
+
+Train from an explicit config:
 
 ```bash
 python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml
 ```
 
-Run a short smoke training job:
+Evaluate a checkpoint on fixed eval suites:
 
 ```bash
-python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --total-timesteps 512 --num-envs 1 --device cpu --run-name smoke
+python scripts/train_cleanrl_ppo.py --milestone m3 --eval-only --ckpt runs/cleanrl_ppo/<run>/checkpoints/latest.pt --eval-suite easy
+```
+
+Aggregate 3-seed milestone results (median/worst success):
+
+```bash
+python scripts/milestone_report.py --suite easy --runs runs/cleanrl_ppo/<run_seed1> runs/cleanrl_ppo/<run_seed2> runs/cleanrl_ppo/<run_seed3>
 ```
 
 Rollout random policy:
@@ -63,10 +96,16 @@ Rollout random policy:
 python scripts/rollout.py --episodes 1
 ```
 
+Rollout in goal-pose mode with explicit target:
+
+```bash
+python scripts/rollout.py --episodes 1 --task-mode goal_pose --goal-x 1.0 --goal-y 0.2 --goal-yaw-deg 30 --policy zero
+```
+
 Rollout checkpoint with rendering:
 
 ```bash
-mjpython scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best.pt --render --episodes 1 --deterministic
+mjpython scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best_nominal.pt --render --episodes 1 --deterministic --task-mode goal_pose
 ```
 
 On macOS, MuJoCo viewer rendering requires `mjpython` (not plain `python`).
@@ -89,7 +128,7 @@ mjpython -c "import mujoco; print('mjpython ok')"
 Headless video recording:
 
 ```bash
-python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best.pt --record runs/cleanrl_ppo/<run>/rollout.mp4 --episodes 1 --deterministic
+python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best_nominal.pt --record runs/cleanrl_ppo/<run>/rollout.mp4 --episodes 1 --deterministic --task-mode goal_pose
 ```
 
 Device selection for training:
@@ -97,13 +136,31 @@ Device selection for training:
 - `auto` prefers `cuda`, then `mps`, then `cpu`.
 - Recommended defaults: macOS uses smaller vectorization (`4-8` envs), Linux CUDA uses larger (`16+` envs).
 
+### Eval outputs and checkpoints
+
+Each run writes:
+
+- TensorBoard logs: `runs/cleanrl_ppo/<run>/tb`
+- Eval JSONL: `runs/cleanrl_ppo/<run>/eval/metrics.jsonl`
+- Checkpoints:
+  - `latest.pt`
+  - `best.pt` (best nominal)
+  - `best_nominal.pt`
+  - `best_stress.pt`
+
+Run TensorBoard:
+
+```bash
+tensorboard --logdir runs/cleanrl_ppo --port 6006
+```
+
 ### Multi-GPU recipe (remote Linux box)
 
 Run two independent seeds, one process per GPU:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --seed 1 --num-envs 16 --run-name k1_ppo_s1_gpu0
-CUDA_VISIBLE_DEVICES=1 python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --seed 2 --num-envs 16 --run-name k1_ppo_s2_gpu1
+CUDA_VISIBLE_DEVICES=0 python scripts/train_cleanrl_ppo.py --milestone m3 --seed 1 --num-envs 16 --run-name k1_m3_s1_gpu0
+CUDA_VISIBLE_DEVICES=1 python scripts/train_cleanrl_ppo.py --milestone m3 --seed 2 --num-envs 16 --run-name k1_m3_s2_gpu1
 ```
 
 Suggested remote workflow:
