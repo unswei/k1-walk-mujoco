@@ -2,8 +2,8 @@ seed: 1
 milestone: m1
 env_config_path: configs/env_k1_walk.yaml
 eval_suite_path: configs/eval_suites_goal_pose.yaml
-eval_nominal_suite: m1_nominal
-eval_stress_suite: m1_nominal
+eval_nominal_suite: m1_nominal_stage1
+eval_stress_suite: m1_nominal_stage1
 eval_extra_suites: []
 
 device: auto
@@ -36,6 +36,12 @@ env_overrides:
   task:
     mode: velocity
   env:
-    v_x_target: 0.5
+    v_x_target: 0.35
+    reset_noise_qpos_std: 0.005
+    reset_noise_qvel_std: 0.02
+  reward:
+    w_upright: 1.5
+    w_alive: 0.2
+    w_torque_penalty: 0.005
   randomization:
     enabled: false

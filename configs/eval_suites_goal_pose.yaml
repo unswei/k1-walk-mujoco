@@ -116,6 +116,23 @@ m1_nominal:
     max_steps: 1000
     command_rmse_thresholds: {vx: 0.25, vy: 0.35, yaw_rate: 0.8}
 
+m1_nominal_stage1:
+  - seed: 1101
+    task_mode: velocity
+    command: {vx: 0.25, vy: 0.0, yaw_rate: 0.0}
+    max_steps: 1000
+    command_rmse_thresholds: {vx: 0.25, vy: 0.35, yaw_rate: 0.8}
+  - seed: 1102
+    task_mode: velocity
+    command: {vx: 0.35, vy: 0.0, yaw_rate: 0.0}
+    max_steps: 1000
+    command_rmse_thresholds: {vx: 0.25, vy: 0.35, yaw_rate: 0.8}
+  - seed: 1103
+    task_mode: velocity
+    command: {vx: 0.45, vy: 0.0, yaw_rate: 0.0}
+    max_steps: 1000
+    command_rmse_thresholds: {vx: 0.25, vy: 0.35, yaw_rate: 0.8}
+
 m2_nominal:
   - seed: 2001
     task_mode: command_tracking
