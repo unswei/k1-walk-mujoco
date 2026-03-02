@@ -31,7 +31,7 @@ python scripts/fetch_assets.py
 python scripts/smoke_mujoco.py
 ```
 
-## CleanRL PPO (Toolchain B)
+## CleanRL PPO
 
 Install CleanRL dependencies:
 
