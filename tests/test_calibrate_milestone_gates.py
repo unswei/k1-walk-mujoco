@@ -16,6 +16,7 @@ _suggest_threshold = _MODULE._suggest_threshold
 _maybe_clamp_threshold = _MODULE._maybe_clamp_threshold
 _load_reports = _MODULE._load_reports
 _collect_inputs = _MODULE._collect_inputs
+_expand_glob = _MODULE._expand_glob
 
 
 def test_suggest_threshold_directionality() -> None:
@@ -59,3 +60,10 @@ def test_load_reports_keeps_latest_per_seed(tmp_path: Path) -> None:
     by_key = _load_reports([p1, p2])
     grouped = _collect_inputs(runs_by_key=by_key)
     assert grouped["m3"][0]["suites"]["easy"]["success_rate"] == 0.7
+
+
+def test_expand_glob_supports_absolute_paths(tmp_path: Path) -> None:
+    p = tmp_path / "report.json"
+    p.write_text("{}", encoding="utf-8")
+    out = _expand_glob(str(tmp_path / "*.json"))
+    assert out == [p]

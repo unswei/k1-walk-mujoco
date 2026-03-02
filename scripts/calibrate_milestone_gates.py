@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from collections import defaultdict
 import copy
+import glob
 import json
 from pathlib import Path
 from typing import Any
@@ -124,9 +125,13 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _expand_glob(pattern: str) -> list[Path]:
+    return sorted([Path(p) for p in glob.glob(pattern)])
+
+
 def main() -> int:
     args = parse_args()
-    report_paths = sorted(Path().glob(args.reports_glob))
+    report_paths = _expand_glob(args.reports_glob)
     if not report_paths:
         raise FileNotFoundError(f"No report files matched: {args.reports_glob}")
 
