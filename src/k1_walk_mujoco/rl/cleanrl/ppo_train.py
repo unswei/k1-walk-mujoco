@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import math
 from pathlib import Path
 import time
@@ -16,6 +16,7 @@ from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from k1_walk_mujoco.envs.k1_walk_env import K1WalkEnv
+from k1_walk_mujoco.rl.cleanrl.eval_harness import append_eval_jsonl, evaluate_suite, load_eval_suites
 from k1_walk_mujoco.rl.cleanrl.utils import (
     build_run_name,
     ensure_dir,
@@ -34,6 +35,16 @@ def _as_bool(value: Any, default: bool) -> bool:
     return bool(value)
 
 
+def _as_list_str(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    raise TypeError(f"Expected str or list[str], got {type(value)!r}")
+
+
 def _layer_init(layer: nn.Linear, std: float = math.sqrt(2.0), bias: float = 0.0) -> nn.Linear:
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias)
@@ -43,7 +54,9 @@ def _layer_init(layer: nn.Linear, std: float = math.sqrt(2.0), bias: float = 0.0
 @dataclass
 class PPOTrainConfig:
     seed: int = 1
+    milestone: str = "m3"
     env_config_path: Path = Path("configs/env_k1_walk.yaml")
+    env_overrides: dict[str, Any] = field(default_factory=dict)
     device: str = "auto"
     total_timesteps: int = 1_000_000
     num_envs: int | str | None = "auto"
@@ -64,6 +77,12 @@ class PPOTrainConfig:
     eval_every_updates: int = 10
     eval_episodes: int = 1
     save_every_updates: int = 0
+    eval_suite_path: Path | None = Path("configs/eval_suites_goal_pose.yaml")
+    eval_nominal_suite: str = "easy"
+    eval_stress_suite: str = "stress"
+    eval_extra_suites: list[str] = field(default_factory=list)
+    print_every_updates: int = 10
+    nan_watchdog: bool = True
     run_dir: Path = Path("runs/cleanrl_ppo")
     tensorboard: bool = True
     wandb: bool = False
@@ -74,9 +93,18 @@ class PPOTrainConfig:
         default = cls()
         env_cfg = raw.get("env_config_path", raw.get("env_config", default.env_config_path))
         target_kl = raw.get("target_kl", default.target_kl)
+        suite_path_raw = raw.get("eval_suite_path", default.eval_suite_path)
+        suite_path = None if suite_path_raw in (None, "", "null") else Path(suite_path_raw)
+        env_overrides = raw.get("env_overrides", default.env_overrides)
+        if env_overrides is None:
+            env_overrides = {}
+        if not isinstance(env_overrides, dict):
+            raise TypeError(f"env_overrides must be dict, got {type(env_overrides)!r}")
         return cls(
             seed=int(raw.get("seed", default.seed)),
+            milestone=str(raw.get("milestone", default.milestone)),
             env_config_path=Path(env_cfg),
+            env_overrides=env_overrides,
             device=str(raw.get("device", default.device)),
             total_timesteps=int(raw.get("total_timesteps", default.total_timesteps)),
             num_envs=raw.get("num_envs", default.num_envs),
@@ -97,6 +125,12 @@ class PPOTrainConfig:
             eval_every_updates=int(raw.get("eval_every_updates", default.eval_every_updates)),
             eval_episodes=int(raw.get("eval_episodes", default.eval_episodes)),
             save_every_updates=int(raw.get("save_every_updates", default.save_every_updates)),
+            eval_suite_path=suite_path,
+            eval_nominal_suite=str(raw.get("eval_nominal_suite", default.eval_nominal_suite)),
+            eval_stress_suite=str(raw.get("eval_stress_suite", default.eval_stress_suite)),
+            eval_extra_suites=_as_list_str(raw.get("eval_extra_suites", default.eval_extra_suites)),
+            print_every_updates=int(raw.get("print_every_updates", default.print_every_updates)),
+            nan_watchdog=_as_bool(raw.get("nan_watchdog"), default.nan_watchdog),
             run_dir=Path(raw.get("run_dir", default.run_dir)),
             tensorboard=_as_bool(raw.get("tensorboard"), default.tensorboard),
             wandb=_as_bool(raw.get("wandb"), default.wandb),
@@ -104,9 +138,9 @@ class PPOTrainConfig:
         )
 
 
-def _make_env(env_config_path: Path, seed: int):
+def _make_env(env_config_path: Path, seed: int, env_overrides: dict[str, Any]):
     def thunk() -> K1WalkEnv:
-        env = K1WalkEnv(env_config_path=env_config_path)
+        env = K1WalkEnv(env_config_path=env_config_path, cfg_overrides=env_overrides)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -208,7 +242,8 @@ def _save_checkpoint(
     run_name: str,
     update: int,
     global_step: int,
-    best_eval_return: float,
+    best_nominal_success: float,
+    best_stress_success: float,
 ) -> None:
     payload = {
         "agent": agent.state_dict(),
@@ -217,48 +252,88 @@ def _save_checkpoint(
         "run_name": run_name,
         "update": update,
         "global_step": global_step,
-        "best_eval_return": best_eval_return,
+        "best_nominal_success": best_nominal_success,
+        "best_stress_success": best_stress_success,
     }
     torch.save(payload, path)
 
 
-def evaluate_policy(
-    agent: ActorCritic,
-    env: K1WalkEnv,
-    device: torch.device,
+def _build_agent_for_env(env: K1WalkEnv, device: torch.device) -> ActorCritic:
+    obs_dim = int(np.prod(env.observation_space.shape))
+    action_dim = int(np.prod(env.action_space.shape))
+    return ActorCritic(obs_dim=obs_dim, action_dim=action_dim).to(device)
+
+
+def evaluate_checkpoint(
     *,
-    episodes: int,
-    seed: int,
-    deterministic: bool = True,
-) -> dict[str, float]:
-    action_low = np.asarray(env.action_space.low, dtype=np.float32)
-    action_high = np.asarray(env.action_space.high, dtype=np.float32)
+    ckpt_path: Path,
+    cfg: PPOTrainConfig,
+    device: torch.device,
+    suite_name: str | None = None,
+) -> dict[str, Any]:
+    if cfg.eval_suite_path is None:
+        raise ValueError("eval_suite_path must be set for eval-only mode.")
+    suites = load_eval_suites(cfg.eval_suite_path)
+    if suite_name is not None and suite_name not in suites:
+        raise KeyError(f"Unknown eval suite: {suite_name}. Available: {sorted(suites)}")
 
-    returns: list[float] = []
-    lengths: list[int] = []
-    for ep in range(episodes):
-        obs, _ = env.reset(seed=seed + ep)
-        done = False
-        trunc = False
-        ep_return = 0.0
-        ep_length = 0
-        while not (done or trunc):
-            obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
-            with torch.no_grad():
-                action_t = agent.act(obs_t, deterministic=deterministic)
-            action = action_t.squeeze(0).cpu().numpy()
-            action = np.clip(action, action_low, action_high)
-            obs, reward, done, trunc, _ = env.step(action)
-            ep_return += float(reward)
-            ep_length += 1
-        returns.append(ep_return)
-        lengths.append(ep_length)
+    env_probe = K1WalkEnv(env_config_path=cfg.env_config_path, cfg_overrides=cfg.env_overrides)
+    agent = _build_agent_for_env(env_probe, device)
+    env_probe.close()
 
-    return {
-        "return_mean": float(np.mean(returns)),
-        "return_std": float(np.std(returns)),
-        "length_mean": float(np.mean(lengths)),
+    payload = torch.load(ckpt_path, map_location=device, weights_only=False)
+    if not isinstance(payload, dict) or "agent" not in payload:
+        raise RuntimeError(f"Checkpoint format invalid: {ckpt_path}")
+    agent.load_state_dict(payload["agent"])
+    agent.eval()
+
+    target_suites = [suite_name] if suite_name is not None else sorted(suites.keys())
+    results = {
+        sname: evaluate_suite(
+            agent=agent,
+            device=device,
+            env_config_path=cfg.env_config_path,
+            env_overrides=cfg.env_overrides,
+            suite_name=sname,
+            scenarios=suites[sname],
+        )
+        for sname in target_suites
     }
+    return {"checkpoint": str(ckpt_path), "suites": results}
+
+
+def _evaluate_milestone_suites(
+    *,
+    agent: ActorCritic,
+    cfg: PPOTrainConfig,
+    device: torch.device,
+) -> dict[str, dict[str, Any]]:
+    if cfg.eval_suite_path is None:
+        return {}
+    suite_path = cfg.eval_suite_path
+    if not suite_path.exists():
+        return {}
+
+    suites = load_eval_suites(suite_path)
+    selected = [cfg.eval_nominal_suite, cfg.eval_stress_suite, *cfg.eval_extra_suites]
+    ordered_unique = []
+    for name in selected:
+        if name not in ordered_unique:
+            ordered_unique.append(name)
+
+    results: dict[str, dict[str, Any]] = {}
+    for suite_name in ordered_unique:
+        if suite_name not in suites:
+            continue
+        results[suite_name] = evaluate_suite(
+            agent=agent,
+            device=device,
+            env_config_path=cfg.env_config_path,
+            env_overrides=cfg.env_overrides,
+            suite_name=suite_name,
+            scenarios=suites[suite_name],
+        )
+    return results
 
 
 def train_ppo(
@@ -270,6 +345,9 @@ def train_ppo(
     num_envs_override: int | None = None,
     total_timesteps_override: int | None = None,
     wandb_override: bool | None = None,
+    milestone_override: str | None = None,
+    eval_suite_override: str | None = None,
+    print_every_updates_override: int | None = None,
 ) -> dict[str, Any]:
     cfg = raw_config if isinstance(raw_config, PPOTrainConfig) else PPOTrainConfig.from_dict(raw_config)
     if seed_override is not None:
@@ -282,19 +360,29 @@ def train_ppo(
         cfg.total_timesteps = int(total_timesteps_override)
     if wandb_override is not None:
         cfg.wandb = bool(wandb_override)
+    if milestone_override is not None:
+        cfg.milestone = str(milestone_override)
+    if eval_suite_override is not None:
+        cfg.eval_nominal_suite = str(eval_suite_override)
+    if print_every_updates_override is not None:
+        cfg.print_every_updates = int(print_every_updates_override)
 
     device = select_device(cfg.device)
     cfg.num_envs = resolve_num_envs(cfg.num_envs, device.type)
     if cfg.num_envs <= 0:
         raise ValueError(f"num_envs must be > 0, got {cfg.num_envs}")
 
-    run_name = run_name or build_run_name(prefix="k1_ppo", seed=cfg.seed)
+    run_name = run_name or build_run_name(prefix=f"k1_{cfg.milestone}_ppo", seed=cfg.seed)
     run_dir = ensure_dir(Path(cfg.run_dir))
     out_dir = ensure_dir(run_dir / run_name)
     tb_dir = ensure_dir(out_dir / "tb")
     ckpt_dir = ensure_dir(out_dir / "checkpoints")
+    eval_dir = ensure_dir(out_dir / "eval")
     latest_ckpt = ckpt_dir / "latest.pt"
     best_ckpt = ckpt_dir / "best.pt"
+    best_nominal_ckpt = ckpt_dir / "best_nominal.pt"
+    best_stress_ckpt = ckpt_dir / "best_stress.pt"
+    eval_jsonl = eval_dir / "metrics.jsonl"
 
     writer: SummaryWriter | None = SummaryWriter(log_dir=str(tb_dir)) if cfg.tensorboard else None
 
@@ -316,13 +404,12 @@ def train_ppo(
         )
 
     envs: gym.vector.VectorEnv | None = None
-    eval_env: K1WalkEnv | None = None
     try:
-        env_fns = [_make_env(cfg.env_config_path, cfg.seed + i) for i in range(cfg.num_envs)]
-        if cfg.num_envs == 1:
-            envs = gym.vector.SyncVectorEnv(env_fns)
-        else:
-            envs = gym.vector.AsyncVectorEnv(env_fns)
+        env_fns = [
+            _make_env(cfg.env_config_path, cfg.seed + i, env_overrides=cfg.env_overrides)
+            for i in range(cfg.num_envs)
+        ]
+        envs = gym.vector.SyncVectorEnv(env_fns) if cfg.num_envs == 1 else gym.vector.AsyncVectorEnv(env_fns)
 
         obs_shape = envs.single_observation_space.shape
         action_shape = envs.single_action_space.shape
@@ -352,16 +439,28 @@ def train_ppo(
         next_obs = torch.as_tensor(next_obs_np, dtype=torch.float32, device=device)
         next_done = torch.zeros(cfg.num_envs, dtype=torch.float32, device=device)
 
-        eval_env = K1WalkEnv(env_config_path=cfg.env_config_path)
-
         global_step = 0
         start_time = time.time()
-        best_eval_return = -float("inf")
+        best_nominal_success = -float("inf")
+        best_stress_success = -float("inf")
         recent_returns: deque[float] = deque(maxlen=100)
         running_returns = np.zeros(cfg.num_envs, dtype=np.float32)
         running_lengths = np.zeros(cfg.num_envs, dtype=np.int64)
 
-        reward_keys = ("r_forward", "r_upright", "r_joint_vel", "r_torque")
+        reward_keys = (
+            "r_forward",
+            "r_cmd_vx",
+            "r_cmd_vy",
+            "r_cmd_yaw_rate",
+            "r_upright",
+            "r_joint_vel",
+            "r_torque",
+            "r_progress",
+            "r_goal_bonus",
+            "r_goal_yaw",
+            "r_action_smooth",
+            "r_alive",
+        )
 
         for update in range(1, num_updates + 1):
             if cfg.anneal_lr:
@@ -386,6 +485,11 @@ def train_ppo(
                 clipped_action = torch.clamp(action, action_low, action_high).cpu().numpy()
                 next_obs_np, reward_np, term_np, trunc_np, infos = envs.step(clipped_action)
                 done_np = np.logical_or(term_np, trunc_np)
+
+                if cfg.nan_watchdog and (
+                    not np.isfinite(next_obs_np).all() or not np.isfinite(reward_np).all()
+                ):
+                    raise RuntimeError("NaN/Inf detected in env rollout data.")
 
                 rewards[step] = torch.as_tensor(reward_np, dtype=torch.float32, device=device)
                 next_obs = torch.as_tensor(next_obs_np, dtype=torch.float32, device=device)
@@ -450,7 +554,6 @@ def train_ppo(
             v_loss = torch.zeros((), device=device)
             entropy_loss = torch.zeros((), device=device)
 
-            stop_early = False
             for _epoch in range(cfg.update_epochs):
                 np.random.shuffle(b_inds)
                 for start in range(0, batch_size, minibatch_size):
@@ -500,23 +603,23 @@ def train_ppo(
                     entropy_loss = entropy.mean()
                     loss = pg_loss - cfg.ent_coef * entropy_loss + cfg.vf_coef * v_loss
 
+                    if cfg.nan_watchdog and not torch.isfinite(loss):
+                        raise RuntimeError("NaN/Inf detected in policy optimization loss.")
+
                     optimizer.zero_grad()
                     loss.backward()
                     nn.utils.clip_grad_norm_(agent.parameters(), cfg.max_grad_norm)
                     optimizer.step()
 
                 if cfg.target_kl is not None and approx_kl > cfg.target_kl:
-                    stop_early = True
                     break
-            if stop_early:
-                pass
 
             y_pred = b_values.detach().cpu().numpy()
             y_true = b_returns.detach().cpu().numpy()
             var_y = np.var(y_true)
             explained_var = float("nan") if var_y == 0 else float(1.0 - np.var(y_true - y_pred) / var_y)
 
-            sps = int(global_step / (time.time() - start_time))
+            sps = int(global_step / max(1e-9, (time.time() - start_time)))
             metrics: dict[str, float] = {
                 "charts/learning_rate": float(optimizer.param_groups[0]["lr"]),
                 "charts/sps": float(sps),
@@ -538,19 +641,33 @@ def train_ppo(
             for reason, count in termination_counts.items():
                 metrics[f"termination/{reason}"] = float(count)
 
+            suite_results: dict[str, dict[str, Any]] = {}
             should_eval = (update % cfg.eval_every_updates == 0) or (update == num_updates)
             if should_eval:
-                eval_stats = evaluate_policy(
-                    agent=agent,
-                    env=eval_env,
-                    device=device,
-                    episodes=cfg.eval_episodes,
-                    seed=cfg.seed + 10_000 + update,
-                    deterministic=True,
+                suite_results = _evaluate_milestone_suites(agent=agent, cfg=cfg, device=device)
+                for suite_name, result in suite_results.items():
+                    prefix = f"eval/{suite_name}"
+                    metrics[f"{prefix}/success_rate"] = float(result["success_rate"])
+                    metrics[f"{prefix}/fall_rate"] = float(result["fall_rate"])
+                    metrics[f"{prefix}/median_final_pos_error_m"] = float(
+                        result["median_final_pos_error_m"]
+                    )
+                    metrics[f"{prefix}/median_final_yaw_error_deg"] = float(
+                        result["median_final_yaw_error_deg"]
+                    )
+                    metrics[f"{prefix}/median_time_to_goal_s"] = float(
+                        result["median_time_to_goal_s"]
+                    )
+
+                append_eval_jsonl(
+                    eval_jsonl,
+                    {
+                        "update": update,
+                        "global_step": global_step,
+                        "milestone": cfg.milestone,
+                        "suites": suite_results,
+                    },
                 )
-                metrics["eval/return_mean"] = eval_stats["return_mean"]
-                metrics["eval/return_std"] = eval_stats["return_std"]
-                metrics["eval/length_mean"] = eval_stats["length_mean"]
 
                 _save_checkpoint(
                     path=latest_ckpt,
@@ -560,11 +677,36 @@ def train_ppo(
                     run_name=run_name,
                     update=update,
                     global_step=global_step,
-                    best_eval_return=best_eval_return,
+                    best_nominal_success=best_nominal_success,
+                    best_stress_success=best_stress_success,
                 )
 
-                if eval_stats["return_mean"] > best_eval_return:
-                    best_eval_return = eval_stats["return_mean"]
+                nominal_key = cfg.eval_nominal_suite
+                stress_key = cfg.eval_stress_suite
+                nominal_success = (
+                    float(suite_results[nominal_key]["success_rate"])
+                    if nominal_key in suite_results
+                    else float("nan")
+                )
+                stress_success = (
+                    float(suite_results[stress_key]["success_rate"])
+                    if stress_key in suite_results
+                    else float("nan")
+                )
+
+                if np.isfinite(nominal_success) and nominal_success > best_nominal_success:
+                    best_nominal_success = nominal_success
+                    _save_checkpoint(
+                        path=best_nominal_ckpt,
+                        agent=agent,
+                        optimizer=optimizer,
+                        cfg=cfg,
+                        run_name=run_name,
+                        update=update,
+                        global_step=global_step,
+                        best_nominal_success=best_nominal_success,
+                        best_stress_success=best_stress_success,
+                    )
                     _save_checkpoint(
                         path=best_ckpt,
                         agent=agent,
@@ -573,7 +715,22 @@ def train_ppo(
                         run_name=run_name,
                         update=update,
                         global_step=global_step,
-                        best_eval_return=best_eval_return,
+                        best_nominal_success=best_nominal_success,
+                        best_stress_success=best_stress_success,
+                    )
+
+                if np.isfinite(stress_success) and stress_success > best_stress_success:
+                    best_stress_success = stress_success
+                    _save_checkpoint(
+                        path=best_stress_ckpt,
+                        agent=agent,
+                        optimizer=optimizer,
+                        cfg=cfg,
+                        run_name=run_name,
+                        update=update,
+                        global_step=global_step,
+                        best_nominal_success=best_nominal_success,
+                        best_stress_success=best_stress_success,
                     )
 
             if cfg.save_every_updates > 0 and (update % cfg.save_every_updates == 0):
@@ -586,7 +743,8 @@ def train_ppo(
                     run_name=run_name,
                     update=update,
                     global_step=global_step,
-                    best_eval_return=best_eval_return,
+                    best_nominal_success=best_nominal_success,
+                    best_stress_success=best_stress_success,
                 )
 
             if writer is not None:
@@ -597,6 +755,17 @@ def train_ppo(
             if wandb_run is not None:
                 wandb_run.log(metrics, step=global_step)
 
+            if cfg.print_every_updates > 0 and (
+                update == 1 or update % cfg.print_every_updates == 0 or update == num_updates
+            ):
+                nominal_val = metrics.get(f"eval/{cfg.eval_nominal_suite}/success_rate", float("nan"))
+                stress_val = metrics.get(f"eval/{cfg.eval_stress_suite}/success_rate", float("nan"))
+                print(
+                    f"[{cfg.milestone}] update={update}/{num_updates} step={global_step} "
+                    f"sps={sps} mean100={metrics.get('charts/episodic_return_mean100', float('nan')):.3f} "
+                    f"nominal_success={nominal_val:.3f} stress_success={stress_val:.3f}"
+                )
+
         _save_checkpoint(
             path=latest_ckpt,
             agent=agent,
@@ -605,14 +774,13 @@ def train_ppo(
             run_name=run_name,
             update=num_updates,
             global_step=global_step,
-            best_eval_return=best_eval_return,
+            best_nominal_success=best_nominal_success,
+            best_stress_success=best_stress_success,
         )
 
     finally:
         if envs is not None:
             envs.close()
-        if eval_env is not None:
-            eval_env.close()
         if writer is not None:
             writer.close()
         if wandb_run is not None:
@@ -624,4 +792,9 @@ def train_ppo(
         "num_envs": cfg.num_envs,
         "latest_ckpt": str(latest_ckpt),
         "best_ckpt": str(best_ckpt) if best_ckpt.exists() else str(latest_ckpt),
+        "best_nominal_ckpt": str(best_nominal_ckpt)
+        if best_nominal_ckpt.exists()
+        else str(latest_ckpt),
+        "best_stress_ckpt": str(best_stress_ckpt) if best_stress_ckpt.exists() else str(latest_ckpt),
+        "eval_jsonl": str(eval_jsonl),
     }
