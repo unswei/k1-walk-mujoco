@@ -86,21 +86,29 @@ echo "[sync] remote_root=$REMOTE_ROOT"
 echo "[sync] prefix=$PREFIX"
 echo "[sync] dest=$DEST"
 
-# Pull campaign-level logs.
-scp "$REMOTE:$REMOTE_ROOT/runs/cleanrl_ppo/campaign_logs/${PREFIX}_*" "$DEST/" || true
+# Pull campaign-level logs in a shell-safe way.
+ssh "$REMOTE" "cd '$REMOTE_ROOT' && ls runs/cleanrl_ppo/campaign_logs/${PREFIX}_* 2>/dev/null || true" |
+while IFS= read -r remote_path; do
+  [[ -z "$remote_path" ]] && continue
+  scp "$REMOTE:$REMOTE_ROOT/$remote_path" "$DEST/" || true
+done
 
 # Pull per-run eval metrics.
-mapfile -t RUN_DIRS < <(ssh "$REMOTE" "cd '$REMOTE_ROOT' && ls -d runs/cleanrl_ppo/${PREFIX}_* 2>/dev/null || true")
-for run_dir in "${RUN_DIRS[@]}"; do
+ssh "$REMOTE" "cd '$REMOTE_ROOT' && ls -d runs/cleanrl_ppo/${PREFIX}_* 2>/dev/null || true" |
+while IFS= read -r run_dir; do
+  [[ -z "$run_dir" ]] && continue
   run_name="$(basename "$run_dir")"
   remote_eval="$REMOTE_ROOT/$run_dir/eval/metrics.jsonl"
   local_eval="$DEST/${run_name}_eval_metrics.jsonl"
   scp "$REMOTE:$remote_eval" "$local_eval" || true
-
 done
 
 if [[ "$INCLUDE_VIDEOS" -eq 1 ]]; then
-  scp "$REMOTE:$REMOTE_ROOT/runs/cleanrl_ppo/videos"/*"/${PREFIX}"*.mp4 "$DEST/" || true
+  ssh "$REMOTE" "cd '$REMOTE_ROOT' && ls runs/cleanrl_ppo/videos/*/${PREFIX}*.mp4 2>/dev/null || true" |
+  while IFS= read -r remote_video; do
+    [[ -z "$remote_video" ]] && continue
+    scp "$REMOTE:$REMOTE_ROOT/$remote_video" "$DEST/" || true
+  done
 fi
 
 echo "[sync] complete"

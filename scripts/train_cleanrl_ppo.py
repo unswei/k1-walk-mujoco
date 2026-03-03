@@ -67,6 +67,18 @@ def parse_args() -> argparse.Namespace:
         help="Terminal progress print frequency in updates.",
     )
     parser.add_argument(
+        "--eval-every-updates",
+        type=int,
+        default=None,
+        help="Override evaluation cadence in updates.",
+    )
+    parser.add_argument(
+        "--num-steps",
+        type=int,
+        default=None,
+        help="Override rollout horizon per environment.",
+    )
+    parser.add_argument(
         "--init-ckpt",
         type=str,
         default=None,
@@ -96,6 +108,10 @@ def main() -> int:
     args = parse_args()
     if args.init_ckpt is not None and args.resume_ckpt is not None:
         raise ValueError("Use either --init-ckpt or --resume-ckpt, not both.")
+    if args.init_ckpt is not None and not Path(args.init_ckpt).exists():
+        raise FileNotFoundError(f"--init-ckpt not found: {args.init_ckpt}")
+    if args.resume_ckpt is not None and not Path(args.resume_ckpt).exists():
+        raise FileNotFoundError(f"--resume-ckpt not found: {args.resume_ckpt}")
 
     cfg_path = _resolve_config_path(args.config, args.milestone)
     cfg_dict = load_yaml_config(cfg_path)
@@ -135,6 +151,8 @@ def main() -> int:
         milestone_override=args.milestone,
         eval_suite_override=args.eval_suite,
         print_every_updates_override=args.print_every_updates,
+        eval_every_updates_override=args.eval_every_updates,
+        num_steps_override=args.num_steps,
         resume_checkpoint_override=args.resume_ckpt,
         resume_training_state_override=True if args.resume_training_state else None,
     )
@@ -144,7 +162,9 @@ def main() -> int:
     print(f"Num envs: {result['num_envs']}")
     print(f"Update span: {result['start_update']} -> {result['end_update']}")
     print(f"Global step span: {result['start_global_step']} -> {result['end_global_step']}")
+    print(f"Initialized from: {result['initialized_from']}")
     print(f"Resumed from: {result['resumed_from']}")
+    print(f"Resume training state: {result['resume_training_state']}")
     print(f"Latest checkpoint: {result['latest_ckpt']}")
     print(f"Best checkpoint: {result['best_ckpt']}")
     print(f"Best nominal checkpoint: {result['best_nominal_ckpt']}")

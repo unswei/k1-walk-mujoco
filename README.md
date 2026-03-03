@@ -237,6 +237,23 @@ Sync a remote run prefix into local artifacts:
 scripts/sync_remote_experiment.sh --remote deploy@<remotehost> --prefix <run_prefix>
 ```
 
+Staged M2 continuation launch (candidate-B):
+
+```bash
+scripts/launch_m2_candidate_b.sh --stage stage1
+scripts/launch_m2_candidate_b.sh --stage stage2 --stage1-prefix <stage1_run_prefix>
+```
+
+Warm-start provenance and GPU-utilization knobs:
+
+```bash
+scripts/launch_m2_candidate_b.sh --stage stage1 --dry-run
+scripts/launch_m2_candidate_b.sh --stage stage1 --load-mode init --eval-every-updates 20 --num-envs 32 --jobs-per-gpu 2
+```
+
+The launcher writes `runs/cleanrl_ppo/campaign_logs/<run_prefix>_launch_manifest.tsv` with
+seed/GPU/checkpoint mapping and checkpoint existence checks.
+
 Detailed conventions live in `experiments/README.md`.
 Full process steps live in `docs/experiment_workflow.md`.
 

@@ -369,6 +369,8 @@ def train_ppo(
     milestone_override: str | None = None,
     eval_suite_override: str | None = None,
     print_every_updates_override: int | None = None,
+    eval_every_updates_override: int | None = None,
+    num_steps_override: int | None = None,
     resume_checkpoint_override: str | Path | None = None,
     resume_training_state_override: bool | None = None,
 ) -> dict[str, Any]:
@@ -392,6 +394,10 @@ def train_ppo(
         cfg.eval_nominal_suite = str(eval_suite_override)
     if print_every_updates_override is not None:
         cfg.print_every_updates = int(print_every_updates_override)
+    if eval_every_updates_override is not None:
+        cfg.eval_every_updates = int(eval_every_updates_override)
+    if num_steps_override is not None:
+        cfg.num_steps = int(num_steps_override)
     if resume_checkpoint_override is not None:
         cfg.resume_checkpoint = Path(resume_checkpoint_override)
     if resume_training_state_override is not None:
@@ -893,7 +899,9 @@ def train_ppo(
         "end_update": end_update,
         "start_global_step": start_global_step_for_sps,
         "end_global_step": global_step,
+        "initialized_from": str(cfg.init_checkpoint) if cfg.init_checkpoint is not None else None,
         "resumed_from": str(cfg.resume_checkpoint) if cfg.resume_checkpoint is not None else None,
+        "resume_training_state": bool(cfg.resume_training_state),
         "latest_ckpt": str(latest_ckpt),
         "best_ckpt": str(best_ckpt) if best_ckpt.exists() else str(latest_ckpt),
         "best_nominal_ckpt": str(best_nominal_ckpt)
