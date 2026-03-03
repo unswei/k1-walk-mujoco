@@ -175,6 +175,12 @@ Headless video recording:
 python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best_nominal.pt --record runs/cleanrl_ppo/<run>/rollout.mp4 --episodes 1 --deterministic --task-mode goal_pose
 ```
 
+Headless video with body-tracking camera:
+
+```bash
+python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best_nominal.pt --record runs/cleanrl_ppo/<run>/rollout_track.mp4 --record-camera track --track-body base --episodes 1 --deterministic
+```
+
 Optimise the 15-parameter gait with parallel random-search successive halving:
 
 ```bash
@@ -209,6 +215,30 @@ Run TensorBoard:
 ```bash
 tensorboard --logdir runs/cleanrl_ppo --port 6006
 ```
+
+### Experiment Ops (Canonical)
+
+Use `experiments/` as the canonical experiment record:
+
+- Structured logs: `experiments/logs/` (commit to Git)
+- Generated summary: `experiments/experiments.md` (commit to Git)
+- Raw pulled artifacts: `experiments/artifacts/` (do not commit)
+- Review videos: `experiments/videos/` (do not commit)
+
+Generate summary from structured logs:
+
+```bash
+python scripts/generate_experiment_summary.py
+```
+
+Sync a remote run prefix into local artifacts:
+
+```bash
+scripts/sync_remote_experiment.sh --remote deploy@<remotehost> --prefix <run_prefix>
+```
+
+Detailed conventions live in `experiments/README.md`.
+Full process steps live in `docs/experiment_workflow.md`.
 
 ### Multi-GPU recipe (remote Linux box)
 
