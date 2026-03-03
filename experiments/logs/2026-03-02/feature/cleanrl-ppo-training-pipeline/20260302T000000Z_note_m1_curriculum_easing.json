@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "record_type": "note",
+  "date": "2026-03-02",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "title": "M1 Curriculum Easing (Config Change)",
+  "body": [
+    "Added stage-aligned eval suite m1_nominal_stage1 (vx=0.25/0.35/0.45) in configs/eval_suites_goal_pose.yaml",
+    "Updated configs/train_ppo_m1.yaml: eval suite switched to m1_nominal_stage1; v_x_target=0.35 (was 0.5); lower reset noise (qpos 0.005, qvel 0.02); modest stability reward tweaks (w_upright, w_alive, torque penalty)",
+    "Commit on branch: 071d661"
+  ]
+}

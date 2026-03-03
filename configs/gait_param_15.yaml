@@ -1,0 +1,20 @@
+controller: param_gait_15
+filter_alpha: 0.35
+
+# Seed values (clamped at load time against bounds derived from model limits).
+params:
+  f: 1.2
+  hip_pitch_offset: -0.30
+  hip_pitch_amp: 0.20
+  knee_offset: 0.60
+  knee_amp: 0.25
+  ankle_offset: -0.30
+  ankle_amp: 0.20
+  knee_phase: 0.60
+  ankle_phase: -0.20
+  hip_roll_offset: 0.00
+  hip_roll_amp: 0.06
+  roll_phase: 0.00
+  ankle_roll_amp: 0.04
+  ankle_roll_phase: 0.00
+  swing_knee_boost_amp: 0.10

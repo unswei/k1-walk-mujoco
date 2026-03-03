@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "record_type": "run",
+  "run_name": "m1_resume10m_lr1e4_s2_g1",
+  "date": "2026-03-03",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "commit": "071d661",
+  "campaign": {
+    "name": "True-Resume + Lower-LR 10M Continuation",
+    "goal": "continue M1 from real optimizer/training state and reduce LR for stability",
+    "notes": "True resume confirmed by update/global step continuing from prior 10M run."
+  },
+  "milestone": "m1",
+  "seed": 2,
+  "settings": {
+    "total_timesteps": 10000000,
+    "num_envs": 32,
+    "device": "cuda",
+    "learning_rate": 0.0001
+  },
+  "command": "train_cleanrl_ppo.py --milestone m1 --total-timesteps 10000000 --num-envs 32 --device cuda --learning-rate 1e-4 --resume-ckpt runs/cleanrl_ppo/m1_easier_10m_s2_g1/checkpoints/latest.pt --resume-training-state",
+  "resume": {
+    "ckpt": "runs/cleanrl_ppo/m1_easier_10m_s2_g1/checkpoints/latest.pt",
+    "resume_training_state": true
+  },
+  "status": "completed",
+  "timing": {
+    "start_utc": "2026-03-02T22:58:47Z",
+    "end_utc": "2026-03-03T00:27:31Z",
+    "start_local": "Tue Mar 3 09:58:47 AEDT 2026",
+    "end_local": "Tue Mar 3 11:27:31 AEDT 2026",
+    "duration_s": 5324
+  },
+  "metrics": {
+    "suite": "m1_nominal_stage1",
+    "fall_rate": 0.0,
+    "vx_rmse": 0.1008
+  },
+  "notes": "Completed true-resume continuation from update=612 to 1222 (global_step 10,027,008 -> 20,021,248)."
+}

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "record_type": "note",
+  "date": "2026-03-03",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "title": "Continuation Campaign Outcome",
+  "body": [
+    "Original set (s1,s2,s3,s4 from 10M): fall_mean=0.1667, fall_worst=0.3333, vx_median=0.1284",
+    "With continued seeds (s1,s2,s3_plus2m,s4_plus2m): fall_mean=0.3333, fall_worst=0.6667, vx_median=0.2085",
+    "Decision: keep original 10M checkpoints; do not promote +2M"
+  ]
+}
