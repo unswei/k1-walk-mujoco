@@ -21,6 +21,14 @@ def test_env_step_no_nan_and_shape_consistent() -> None:
     env.close()
 
 
+def test_env_reset_settles_near_ground() -> None:
+    env = K1WalkEnv()
+    _obs, _info = env.reset(seed=123)
+    base_z = float(env.backend.get_state().base_pos[2])
+    assert 0.45 < base_z < 0.7
+    env.close()
+
+
 def test_env_deterministic_given_seed_and_actions() -> None:
     env1 = K1WalkEnv()
     env2 = K1WalkEnv()

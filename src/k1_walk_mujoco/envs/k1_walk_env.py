@@ -40,6 +40,7 @@ DEFAULT_ENV_CFG: dict[str, Any] = {
         "episode_seconds": 20.0,
         "reset_noise_qpos_std": 0.01,
         "reset_noise_qvel_std": 0.05,
+        "reset_settle_steps": 20,
         "v_x_target": 0.5,
     },
     "task": {
@@ -142,6 +143,7 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
         self.v_x_target = float(self.cfg["env"]["v_x_target"])
         self._qpos_noise_std = float(self.cfg["env"]["reset_noise_qpos_std"])
         self._qvel_noise_std = float(self.cfg["env"]["reset_noise_qvel_std"])
+        self._reset_settle_steps = int(self.cfg["env"].get("reset_settle_steps", 20))
         self._task_mode = str(self.cfg["task"]["mode"])
         self._episode_task_mode = self._task_mode
 
@@ -540,6 +542,27 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
         }
         return float(reward), done, info
 
+    def _settle_after_reset(self) -> None:
+        if self._reset_settle_steps <= 0:
+            return
+
+        q_des = self.j.q_nominal
+        zeros = np.zeros_like(self.j.q_nominal)
+        for _ in range(self._reset_settle_steps):
+            s = self.backend.get_state()
+            tau = compute_pd_torque(
+                q=s.joint_qpos,
+                qd=s.joint_qvel,
+                q_des=q_des,
+                kp=self.j.kp,
+                kd=self.j.kd,
+                effort_limit=self.j.effort,
+                qd_des=zeros,
+                tau_ff=zeros,
+            )
+            tau = tau * self._motor_strength_scale
+            self.backend.step(tau=tau, n_substeps=self.decimation)
+
     def reset(
         self,
         *,
@@ -568,6 +591,7 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
             qpos_noise_std=self._qpos_noise_std,
             qvel_noise_std=self._qvel_noise_std,
         )
+        self._settle_after_reset()
 
         self._current_command = self._sample_command()
         self._next_command_resample_step = self._resample_command_horizon_steps()

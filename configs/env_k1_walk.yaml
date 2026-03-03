@@ -9,6 +9,7 @@ env:
   episode_seconds: 20.0
   reset_noise_qpos_std: 0.01
   reset_noise_qvel_std: 0.05
+  reset_settle_steps: 20
   v_x_target: 0.5
 
 task:
