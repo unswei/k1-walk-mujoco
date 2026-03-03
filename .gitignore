@@ -25,6 +25,10 @@ htmlcov/
 # Local runs
 runs/
 
+# Experiment binary artifacts (metadata logs stay tracked under experiments/logs)
+experiments/artifacts/
+experiments/videos/
+
 # MuJoCo assets fetched from manifest
 assets/booster/*
 !assets/booster/.source.json
