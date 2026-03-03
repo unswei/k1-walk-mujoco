@@ -134,6 +134,12 @@ Rollout random policy:
 python scripts/rollout.py --episodes 1
 ```
 
+Rollout parameterised gait baseline (no learned policy):
+
+```bash
+python scripts/rollout.py --controller param_gait_15 --gait-config configs/gait_param_15.yaml --episodes 1
+```
+
 Rollout in goal-pose mode with explicit target:
 
 ```bash
@@ -168,6 +174,18 @@ Headless video recording:
 ```bash
 python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best_nominal.pt --record runs/cleanrl_ppo/<run>/rollout.mp4 --episodes 1 --deterministic --task-mode goal_pose
 ```
+
+Optimise the 15-parameter gait with parallel random-search successive halving:
+
+```bash
+python scripts/optimise_gait_params.py --config configs/optimise_gait.yaml
+```
+
+Artifacts are written under `runs/gait_optim/<run_name>/` including:
+- `best_params.yaml`
+- `summary.json`
+- `candidates.jsonl`
+- `tb/` TensorBoard logs
 
 Device selection for training:
 

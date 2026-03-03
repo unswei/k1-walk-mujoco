@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "record_type": "run",
+  "run_name": "m1_easier_10m_s3_g0_plus2m",
+  "date": "2026-03-03",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "commit": "071d661",
+  "campaign": {
+    "name": "Continuation Campaign (+2M for Seeds 3 and 4)",
+    "goal": "recover remaining instability on weaker seeds without restarting",
+    "notes": "Both runs regressed vs original 10M checkpoints; do not promote +2M checkpoints."
+  },
+  "milestone": "m1",
+  "seed": 3,
+  "settings": {
+    "total_timesteps": 2000000,
+    "num_envs": 32,
+    "device": "cuda"
+  },
+  "command": "train_cleanrl_ppo.py --milestone m1 --total-timesteps 2000000 --num-envs 32 --device cuda --init-ckpt runs/cleanrl_ppo/m1_easier_10m_s3_g0/checkpoints/best_nominal.pt",
+  "init": "runs/cleanrl_ppo/m1_easier_10m_s3_g0/checkpoints/best_nominal.pt",
+  "status": "completed",
+  "timing": {
+    "start_utc": "2026-03-02T21:22:30Z",
+    "end_utc": "2026-03-02T21:40:53Z",
+    "start_local": "Tue Mar 3 08:22:30 AEDT 2026",
+    "end_local": "Tue Mar 3 08:40:53 AEDT 2026",
+    "duration_s": 1103
+  },
+  "metrics": {
+    "suite": "m1_nominal_stage1",
+    "fall_rate": 0.6667,
+    "vx_rmse": 0.3104
+  },
+  "termination_reasons": {
+    "base_height": 2,
+    "time_limit": 1
+  }
+}

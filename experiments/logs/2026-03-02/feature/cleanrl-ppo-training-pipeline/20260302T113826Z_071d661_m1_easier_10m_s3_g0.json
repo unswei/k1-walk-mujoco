@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "record_type": "run",
+  "run_name": "m1_easier_10m_s3_g0",
+  "date": "2026-03-02",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "commit": "071d661",
+  "campaign": {
+    "name": "Main 4-Seed M1 Campaign",
+    "goal": "run proper M1 training with easier curriculum and collect reliable seed spread",
+    "start_utc": "2026-03-02T11:38:26Z",
+    "end_utc": "2026-03-02T14:37:35Z",
+    "notes": "Aggregate: fall_mean=0.1667, fall_worst=0.3333, vx_median=0.1284. success_rate=0.0 and command_tracking_success_rate=0.0 (yaw-rate RMSE above threshold)."
+  },
+  "milestone": "m1",
+  "seed": 3,
+  "settings": {
+    "total_timesteps": 10000000,
+    "num_envs": 32,
+    "device": "cuda"
+  },
+  "command": "train_cleanrl_ppo.py --milestone m1 --total-timesteps 10000000 --num-envs 32 --device cuda",
+  "init": "scratch",
+  "status": "completed",
+  "timing": {
+    "duration_s": 5381
+  },
+  "metrics": {
+    "suite": "m1_nominal_stage1",
+    "fall_rate": 0.3333,
+    "vx_rmse": 0.1842
+  },
+  "termination_reasons": {
+    "time_limit": 2,
+    "base_height": 1
+  }
+}

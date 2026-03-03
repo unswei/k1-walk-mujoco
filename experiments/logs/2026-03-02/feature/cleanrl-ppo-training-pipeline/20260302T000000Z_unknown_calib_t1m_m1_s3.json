@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "record_type": "run",
+  "run_name": "calib_t1m_m1_s3",
+  "date": "2026-03-02",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "campaign": {
+    "name": "Calibration Sweep Attempt (Stopped)",
+    "goal": "calibrate milestone gates from real runs",
+    "config": [
+      "run_milestones.py --milestone m1 --auto-progress --until-milestone m5",
+      "seeds: 1, 2, 3",
+      "--total-timesteps 1000000 per milestone",
+      "--num-envs 32 (seed 3 later run with 16 during overlap)",
+      "gates opened temporarily for data collection (checks: [])"
+    ],
+    "notes": "Sweep stopped early; metrics unusable for gate calibration. m1 fall_rate=1.0, success_rate=0.0 across observed seeds."
+  },
+  "milestone": "m1",
+  "seed": 3,
+  "settings": {
+    "total_timesteps": 1000000,
+    "num_envs": 16
+  },
+  "status": "partial",
+  "metrics": {
+    "fall_rate": 1.0,
+    "vx_rmse": 0.4255,
+    "success_rate": 0.0
+  }
+}
