@@ -97,6 +97,47 @@ Device selection for training:
 - `auto` prefers `cuda`, then `mps`, then `cpu`.
 - Recommended defaults: macOS uses smaller vectorization (`4-8` envs), Linux CUDA uses larger (`16+` envs).
 
+### Eval outputs and checkpoints
+
+Each run writes:
+
+- TensorBoard logs: `runs/cleanrl_ppo/<run>/tb`
+- Eval JSONL: `runs/cleanrl_ppo/<run>/eval/metrics.jsonl`
+- Checkpoints:
+  - `latest.pt`
+  - `best.pt` (best nominal)
+  - `best_nominal.pt`
+  - `best_stress.pt`
+
+Run TensorBoard:
+
+```bash
+tensorboard --logdir runs/cleanrl_ppo --port 6006
+```
+
+### Experiment Ops (Canonical)
+
+Use `experiments/` as the canonical experiment record:
+
+- Structured logs: `experiments/logs/` (commit to Git)
+- Generated summary: `experiments/experiments.md` (commit to Git)
+- Raw pulled artifacts: `experiments/artifacts/` (do not commit)
+- Review videos: `experiments/videos/` (do not commit)
+
+Generate summary from structured logs:
+
+```bash
+python scripts/generate_experiment_summary.py
+```
+
+Sync a remote run prefix into local artifacts:
+
+```bash
+scripts/sync_remote_experiment.sh --remote deploy@<remotehost> --prefix <run_prefix>
+```
+
+Detailed conventions live in `experiments/README.md`.
+Full process steps live in `docs/experiment_workflow.md`.
 ### Multi-GPU recipe (remote Linux box)
 
 Run two independent seeds, one process per GPU:
