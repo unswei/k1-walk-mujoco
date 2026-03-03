@@ -43,7 +43,16 @@ def _libpython_link_cmd() -> str:
 
 
 class VideoRecorder:
-    def __init__(self, path: Path, fps: int, width: int = 640, height: int = 480) -> None:
+    def __init__(
+        self,
+        path: Path,
+        fps: int,
+        width: int = 640,
+        height: int = 480,
+        camera_mode: str = "free",
+        track_body: str | None = None,
+        fixed_camera_id: int | None = None,
+    ) -> None:
         try:
             import imageio.v2 as imageio
         except ImportError as exc:
@@ -57,11 +66,16 @@ class VideoRecorder:
         self._renderer = None
         self._width = width
         self._height = height
+        self._camera_mode = camera_mode
+        self._track_body = track_body
+        self._fixed_camera_id = fixed_camera_id
+        self._camera = None
 
     def capture(self, model: mujoco.MjModel, data: mujoco.MjData) -> None:
         if self._renderer is None:
             self._renderer = mujoco.Renderer(model, width=self._width, height=self._height)
-        self._renderer.update_scene(data)
+            self._camera = self._build_camera(model=model)
+        self._renderer.update_scene(data, camera=self._camera)
         frame = self._renderer.render()
         self._writer.append_data(frame)
 
@@ -70,6 +84,41 @@ class VideoRecorder:
             self._renderer.close()
             self._renderer = None
         self._writer.close()
+
+    def _build_camera(self, model: mujoco.MjModel):
+        if self._camera_mode == "free":
+            if self._fixed_camera_id is None:
+                return -1
+            if self._fixed_camera_id < 0 or self._fixed_camera_id >= model.ncam:
+                raise ValueError(
+                    f"--camera-id must be in [0, {model.ncam - 1}] for this model; got {self._fixed_camera_id}"
+                )
+            cam = mujoco.MjvCamera()
+            mujoco.mjv_defaultCamera(cam)
+            cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+            cam.fixedcamid = int(self._fixed_camera_id)
+            return cam
+
+        cam = mujoco.MjvCamera()
+        mujoco.mjv_defaultCamera(cam)
+        cam.type = mujoco.mjtCamera.mjCAMERA_TRACKING
+        body_name = self._track_body or "base"
+        body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, body_name)
+        if body_id < 0:
+            fallback_names = ("base_link", "torso", "pelvis", "base")
+            for candidate in fallback_names:
+                body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, candidate)
+                if body_id >= 0:
+                    break
+        if body_id < 0:
+            raise ValueError(
+                f"Unable to resolve tracking body `{body_name}`. "
+                "Pass --track-body with a valid MuJoCo body name."
+            )
+        cam.trackbodyid = int(body_id)
+        cam.distance = 2.5
+        cam.elevation = -15.0
+        return cam
 
 
 def _load_agent(ckpt_path: Path, env: K1WalkEnv, device: torch.device) -> ActorCritic:
@@ -349,6 +398,25 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional hard step limit per episode.",
     )
+    parser.add_argument(
+        "--record-camera",
+        type=str,
+        default="free",
+        choices=["free", "track"],
+        help="Recording camera mode: free camera or body-tracking camera.",
+    )
+    parser.add_argument(
+        "--track-body",
+        type=str,
+        default="base",
+        help="Body name to track when --record-camera=track.",
+    )
+    parser.add_argument(
+        "--camera-id",
+        type=int,
+        default=None,
+        help="Optional fixed camera id for recording (overrides free camera).",
+    )
     return parser.parse_args()
 
 
@@ -402,7 +470,13 @@ def main() -> int:
     recorder = None
     if args.record is not None:
         fps = max(1, int(round(1.0 / env.policy_dt)))
-        recorder = VideoRecorder(path=Path(args.record), fps=fps)
+        recorder = VideoRecorder(
+            path=Path(args.record),
+            fps=fps,
+            camera_mode=args.record_camera,
+            track_body=args.track_body,
+            fixed_camera_id=args.camera_id,
+        )
 
     episode_returns: list[float] = []
     episode_vx: list[float] = []
