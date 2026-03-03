@@ -41,6 +41,10 @@ DEFAULT_ENV_CFG: dict[str, Any] = {
         "reset_noise_qpos_std": 0.01,
         "reset_noise_qvel_std": 0.05,
         "v_x_target": 0.5,
+        "standing_start": {
+            "enabled": True,
+            "settle_seconds": 0.30,
+        },
     },
     "task": {
         "mode": "velocity",
@@ -142,6 +146,14 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
         self.v_x_target = float(self.cfg["env"]["v_x_target"])
         self._qpos_noise_std = float(self.cfg["env"]["reset_noise_qpos_std"])
         self._qvel_noise_std = float(self.cfg["env"]["reset_noise_qvel_std"])
+        standing_start_cfg = self.cfg["env"].get("standing_start", {})
+        if not isinstance(standing_start_cfg, dict):
+            standing_start_cfg = {}
+        self._standing_start_enabled = bool(standing_start_cfg.get("enabled", True))
+        self._standing_start_settle_seconds = max(
+            0.0,
+            float(standing_start_cfg.get("settle_seconds", 0.30)),
+        )
         self._task_mode = str(self.cfg["task"]["mode"])
         self._episode_task_mode = self._task_mode
 
@@ -445,6 +457,31 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
             return bool(term_cfg.get("terminate_on_success_eval", True))
         return bool(term_cfg.get("terminate_on_success_train", False))
 
+    def _run_standing_start_settle(self) -> None:
+        if not self._standing_start_enabled:
+            return
+        n_steps = int(round(self._standing_start_settle_seconds / self.policy_dt))
+        if n_steps <= 0:
+            return
+
+        q_des_nominal = self.j.q_nominal
+        qd_des = np.zeros_like(q_des_nominal)
+        tau_ff = np.zeros_like(q_des_nominal)
+        for _ in range(n_steps):
+            s = self.backend.get_state()
+            tau = compute_pd_torque(
+                q=s.joint_qpos,
+                qd=s.joint_qvel,
+                q_des=q_des_nominal,
+                kp=self.j.kp,
+                kd=self.j.kd,
+                effort_limit=self.j.effort,
+                qd_des=qd_des,
+                tau_ff=tau_ff,
+            )
+            tau = tau * self._motor_strength_scale
+            self.backend.step(tau=tau, n_substeps=self.decimation)
+
     def _reward_and_done(self) -> tuple[float, bool, dict[str, float | str | bool]]:
         s = self.backend.get_state()
         rew_cfg = self.cfg["reward"]
@@ -568,6 +605,7 @@ class K1WalkEnv(gym.Env[np.ndarray, np.ndarray]):
             qpos_noise_std=self._qpos_noise_std,
             qvel_noise_std=self._qvel_noise_std,
         )
+        self._run_standing_start_settle()
 
         self._current_command = self._sample_command()
         self._next_command_resample_step = self._resample_command_horizon_steps()

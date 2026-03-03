@@ -1,0 +1,27 @@
+seed: 123
+num_workers: 2
+
+env:
+  config_path: configs/env_k1_walk.yaml
+  rollout_seconds: 4.0
+  episodes_per_candidate: 1
+
+search:
+  strategy: random_successive_halving
+  rounds: 2
+  population_per_round: 8
+  keep_top_k: 4
+
+objective:
+  w_v: 3.0
+  w_fall: 6.0
+  w_lat: 1.0
+  w_yaw: 0.8
+  w_tau: 0.25
+  w_limits: 0.5
+
+io:
+  out_dir: runs/gait_optim
+  run_prefix: param_gait_15_smoke
+  gait_seed_config: configs/gait_param_15.yaml
+  record_best_video: false

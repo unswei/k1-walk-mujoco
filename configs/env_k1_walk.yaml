@@ -7,9 +7,12 @@ frequencies:
 
 env:
   episode_seconds: 20.0
-  reset_noise_qpos_std: 0.01
-  reset_noise_qvel_std: 0.05
+  reset_noise_qpos_std: 0.0
+  reset_noise_qvel_std: 0.0
   v_x_target: 0.5
+  standing_start:
+    enabled: true
+    settle_seconds: 0.30
 
 task:
   mode: velocity # velocity | command_tracking | goal_pose
