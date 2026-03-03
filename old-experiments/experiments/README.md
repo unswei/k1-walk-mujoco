@@ -1,9 +1,10 @@
 # Experiments
 
-Experiment runs are logged as one JSON file per run under `experiments/logs/YYYY-MM-DD/<branch>/`.
-The summary table in `docs/experiment_log.md` is generated from these files.
+Experiment runs are logged as one JSON file per run under
+`old-experiments/experiments/logs/YYYY-MM-DD/<branch>/`.
+The summary table in `old-experiments/experiments.md` is generated from these files.
 
-Legacy narrative log: `docs/experiment_log_legacy.md` (kept for historical context).
+Legacy narrative log: `old-experiments/experiment_log_legacy.md` (kept for historical context).
 
 ## Adding a new run
 
