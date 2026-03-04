@@ -1,0 +1,27 @@
+{
+  "record_type": "run",
+  "date": "2026-03-04",
+  "run_name": "m2_candidate_b_stage1b_8m_hiutil_20260304T022508Z_s4_g1j2",
+  "status": "completed",
+  "milestone": "m2",
+  "seed": 4,
+  "settings": {
+    "total_timesteps": 8000000
+  },
+  "metrics": {
+    "suite": "m2_nominal",
+    "success_rate": 0.0,
+    "fall_rate": 0.3333333333333333,
+    "command_tracking_success_rate": 0.0,
+    "median_final_pos_error_m": 4.482771046021266,
+    "median_command_vx_rmse_mps": 0.20487508096736934,
+    "median_command_vy_rmse_mps": 0.20804936642555574,
+    "median_command_yaw_rate_rmse_rps": 1.3375809752809618
+  },
+  "notes": "Stage1b command-priority 8M final eval snapshot.",
+  "paths": {
+    "best_ckpt": "runs/cleanrl_ppo/m2_candidate_b_stage1b_8m_hiutil_20260304T022508Z_s4_g1j2/checkpoints/best.pt",
+    "latest_ckpt": "runs/cleanrl_ppo/m2_candidate_b_stage1b_8m_hiutil_20260304T022508Z_s4_g1j2/checkpoints/latest.pt",
+    "eval_metrics_jsonl": "experiments/artifacts/2026-03-04/m2_candidate_b_stage1b_8m_hiutil_20260304T022508Z/m2_candidate_b_stage1b_8m_hiutil_20260304T022508Z_s4_g1j2_eval_metrics.jsonl"
+  }
+}
