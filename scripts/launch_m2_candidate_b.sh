@@ -43,7 +43,7 @@ usage() {
 Usage: scripts/launch_m2_candidate_b.sh [options]
 
 Options:
-  --stage stage1|stage2         Stage selector (default: $STAGE)
+  --stage stage1|stage1b|stage2 Stage selector (default: $STAGE)
   --config PATH                 Training config override
   --run-prefix NAME             Run prefix override
   --total-timesteps N           Timesteps per seed (default: $TOTAL_TIMESTEPS)
@@ -66,6 +66,7 @@ Options:
 
 Default stage templates:
   stage1: runs/cleanrl_ppo/m2_warm_m1_40m_20260303T110912Z_s{seed}_g{gpu}j{slot}/checkpoints/update_000300.pt
+  stage1b: runs/cleanrl_ppo/m2_warm_m1_40m_20260303T110912Z_s{seed}_g{gpu}j{slot}/checkpoints/update_000300.pt
   stage2: runs/cleanrl_ppo/<stage1-prefix>_s{seed}_g{gpu}j{slot}/checkpoints/latest.pt
 USAGE
 }
@@ -161,8 +162,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$STAGE" != "stage1" && "$STAGE" != "stage2" ]]; then
-  echo "--stage must be stage1 or stage2" >&2
+if [[ "$STAGE" != "stage1" && "$STAGE" != "stage1b" && "$STAGE" != "stage2" ]]; then
+  echo "--stage must be stage1, stage1b, or stage2" >&2
   exit 2
 fi
 if [[ "$LOAD_MODE" != "init" && "$LOAD_MODE" != "resume" ]]; then
@@ -181,6 +182,8 @@ fi
 if [[ -z "$CONFIG" ]]; then
   if [[ "$STAGE" == "stage1" ]]; then
     CONFIG="configs/train_ppo_m2_candidate_b_stage1.yaml"
+  elif [[ "$STAGE" == "stage1b" ]]; then
+    CONFIG="configs/train_ppo_m2_candidate_b_stage1b.yaml"
   else
     CONFIG="configs/train_ppo_m2_candidate_b_stage2.yaml"
   fi
@@ -189,13 +192,15 @@ fi
 if [[ -z "$RUN_PREFIX" ]]; then
   if [[ "$STAGE" == "stage1" ]]; then
     RUN_PREFIX="m2_candidate_b_stage1_6m"
+  elif [[ "$STAGE" == "stage1b" ]]; then
+    RUN_PREFIX="m2_candidate_b_stage1b_8m"
   else
     RUN_PREFIX="m2_candidate_b_stage2_6m"
   fi
 fi
 
 if [[ -z "$INIT_CKPT_TEMPLATE" ]]; then
-  if [[ "$STAGE" == "stage1" ]]; then
+  if [[ "$STAGE" == "stage1" || "$STAGE" == "stage1b" ]]; then
     INIT_CKPT_TEMPLATE="runs/cleanrl_ppo/m2_warm_m1_40m_20260303T110912Z_s{seed}_g{gpu}j{slot}/checkpoints/update_000300.pt"
   else
     INIT_CKPT_TEMPLATE="runs/cleanrl_ppo/${STAGE1_PREFIX}_s{seed}_g{gpu}j{slot}/checkpoints/latest.pt"
