@@ -30,6 +30,8 @@ This directory is the canonical home for experiment records in this repo.
 ## Remote workflow
 
 1. Run experiments on remote host under `runs/cleanrl_ppo/...`.
+   - For Holosoma MJWarp launches, the launcher writes JSON records under:
+     - `experiments/logs/<date>/feature/holosoma-mjwarp/`
 2. Pull selected artifacts with:
    - `scripts/sync_remote_experiment.sh`
 3. Write or update structured JSON records in `experiments/logs/...`.

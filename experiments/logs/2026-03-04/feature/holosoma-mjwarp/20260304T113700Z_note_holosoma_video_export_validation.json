@@ -1,0 +1,20 @@
+{
+  "record_type": "note",
+  "date": "2026-03-04",
+  "title": "Holosoma Video Export Validation",
+  "body": [
+    "Validated checkpoint video export on magrathea-1 without interrupting the active MJWarp training run.",
+    "Used CPU-safe evaluation path (`simulator:mujoco`, `CUDA_VISIBLE_DEVICES=\"\"`) from checkpoint `model_0004000.pt`.",
+    "Generated four local MP4 files under `logs/video_smoke_20260304_223552/episode_*.mp4`."
+  ],
+  "campaign": {
+    "id": "g1_unitree_mjwarp_2gpu_ddp2",
+    "branch": "feature/warp-holosoma",
+    "notes": "Video export smoke for MJWarp training artefacts."
+  },
+  "paths": {
+    "checkpoint": "/home/deploy/work/warp-holosoma/holosoma/logs/warp-holosoma/20260304_111200-g1_unitree_mjwarp_2gpu-locomotion/model_0004000.pt",
+    "video_dir": "/home/deploy/work/warp-holosoma/holosoma/logs/video_smoke_20260304_223552",
+    "eval_log": "/home/deploy/work/warp-holosoma/holosoma/logs/video_smoke_20260304_223552/eval_video_smoke.log"
+  }
+}

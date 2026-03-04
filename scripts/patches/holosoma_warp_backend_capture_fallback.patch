@@ -1,0 +1,65 @@
+diff --git a/src/holosoma/holosoma/simulator/mujoco/backends/warp_backend.py b/src/holosoma/holosoma/simulator/mujoco/backends/warp_backend.py
+index 00cbf5b..16e4270 100644
+--- a/src/holosoma/holosoma/simulator/mujoco/backends/warp_backend.py
++++ b/src/holosoma/holosoma/simulator/mujoco/backends/warp_backend.py
+@@ -153,15 +153,23 @@ class WarpBackend(IMujocoBackend):
+         # Keep reference to CPU data for rendering (synced on demand)
+         self.render_data = data
+ 
+-        # Capture simulation step as CUDA graph for optimal performance
+-        # This eliminates per-kernel launch overhead (~20-30 kernels per step)
+-        # and enables GPU pipelining, providing 5-10x speedup
+-        logger.info("Capturing CUDA graph for simulation step...")
++        # Capture simulation step as CUDA graph for optimal performance.
++        # Warm up once before capture to force lazy module compilation outside
++        # graph capture (older drivers can fail module loads during capture).
++        self.step_graph = None
+         with wp.ScopedDevice(self.mjw_device):
+-            with wp.ScopedCapture() as capture:
+-                mjw.step(self.mjw_model, self.mjw_data)
+-            self.step_graph = capture.graph
+-        logger.info("CUDA graph captured successfully")
++            mjw.step(self.mjw_model, self.mjw_data)
++            try:
++                logger.info("Capturing CUDA graph for simulation step...")
++                with wp.ScopedCapture() as capture:
++                    mjw.step(self.mjw_model, self.mjw_data)
++                self.step_graph = capture.graph
++                logger.info("CUDA graph captured successfully")
++            except Exception as exc:
++                logger.warning(
++                    "CUDA graph capture unavailable (%s); using direct mjw.step() fallback.",
++                    exc,
++                )
+ 
+         logger.info(
+             f"WarpBackend initialized: {model.nbody} bodies, {model.nq} qpos, {model.nv} qvel, {model.nu} actuators"
+@@ -203,20 +211,19 @@ class WarpBackend(IMujocoBackend):
+         logger.info("Initial state synced to GPU successfully")
+ 
+     def step(self) -> None:
+-        """Advance batched simulation by one timestep using CUDA graph.
+-
+-        Launches the pre-captured CUDA graph containing all simulation kernels.
+-        This eliminates per-kernel launch overhead (~20-30 kernels/step) and
+-        provides 5-10x speedup compared to individual kernel launches.
++        """Advance batched simulation by one timestep.
+ 
+-        Note: No explicit synchronization here - allows CPU-GPU pipelining.
+-        GPU work completes asynchronously while CPU prepares next frame.
+-        Synchronization happens only when needed (e.g., in get_render_data()).
++        Uses CUDA graph replay when available, otherwise falls back to
++        direct `mujoco_warp.step()` execution.
+         """
++        import mujoco_warp as mjw
+         import warp as wp
+ 
+         with wp.ScopedDevice(self.mjw_device):
+-            wp.capture_launch(self.step_graph)
++            if self.step_graph is not None:
++                wp.capture_launch(self.step_graph)
++            else:
++                mjw.step(self.mjw_model, self.mjw_data)
+             # No wp.synchronize() - let GPU work in parallel with CPU
+ 
+     def get_render_data(self, world_id: int = 0) -> mujoco.MjData:

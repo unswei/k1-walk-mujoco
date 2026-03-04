@@ -1,10 +1,26 @@
 # k1-walk-mujoco
 
-Train a Booster K1 walking policy in MuJoCo from scratch using a stable core environment and thin RL plug-in adapters.
+Train and evaluate humanoid locomotion stacks centred on MuJoCo, with both in-repo CleanRL work and external Holosoma MJWarp runs.
 
-This repository uses PD position targets (policy outputs joint targets/deltas, PD converts to torques), with MuJoCo physics and Gymnasium environment interfaces.
+## What this repo covers
 
-## Quickstart
+| Track | Purpose | Main entry points |
+| --- | --- | --- |
+| Core K1 MuJoCo env | Stable simulation/task layer for Booster K1 walking | `scripts/fetch_assets.py`, `scripts/smoke_mujoco.py` |
+| CleanRL milestone pipeline | In-repo PPO training, gating, experiment operations | `scripts/train_cleanrl_ppo.py`, `scripts/run_milestones.py` |
+| Holosoma MJWarp experiments | External Holosoma locomotion training workflow on Linux GPUs | `scripts/setup_holosoma_mjwarp_uv.sh`, `scripts/run_holosoma_mjwarp_training.sh` |
+
+This repository uses PD position targets (policy outputs joint targets/deltas, PD converts to torques), with MuJoCo physics and Gymnasium interfaces.
+
+## Quick navigation
+
+- [Core Quickstart](#core-quickstart)
+- [CleanRL PPO](#cleanrl-ppo)
+- [Experiment Ops (Canonical)](#experiment-ops-canonical)
+- [Holosoma MJWarp (experimental)](#holosoma-mjwarp-experimental)
+- [Design choices](#design-choices)
+
+## Core Quickstart
 
 1. Create a virtual environment (uv preferred):
 
@@ -19,6 +35,12 @@ source .venv/bin/activate
 uv pip install -e '.[dev]'
 ```
 
+Install MuJoCo Warp support (optional):
+
+```bash
+uv pip install -e '.[dev,warp]'
+```
+
 3. Fetch pinned Booster assets:
 
 ```bash
@@ -29,6 +51,12 @@ python scripts/fetch_assets.py
 
 ```bash
 python scripts/smoke_mujoco.py
+```
+
+Run the same smoke script against MuJoCo Warp:
+
+```bash
+python scripts/smoke_mujoco.py --backend warp
 ```
 
 ## CleanRL PPO
@@ -275,6 +303,59 @@ tmux new -s k1_ppo_gpu0
 tmux new -s k1_ppo_gpu1
 # run GPU1 command, then detach
 ```
+
+### Holosoma MJWarp (experimental)
+
+For paper-style Holosoma locomotion training with `simulator:mjwarp` on 2x 2080 Ti GPUs:
+
+```bash
+scripts/setup_holosoma_mjwarp_uv.sh
+scripts/smoke_holosoma_mjwarp.sh
+scripts/run_holosoma_mjwarp_training.sh --mode torchrun --total-envs 512
+```
+
+If you are on an older NVIDIA driver and hit Warp graph-capture errors, re-run setup with `--apply-patch`.
+
+Live status and ETA from a running log:
+
+```bash
+python scripts/record_holosoma_run.py status --log-path ~/work/warp-holosoma/holosoma/logs/<run>.log
+```
+
+Generate local MP4 videos from a trained checkpoint (CPU-safe path, does not consume training GPUs):
+
+```bash
+CUDA_VISIBLE_DEVICES="" MUJOCO_GL=egl \
+python ~/work/warp-holosoma/holosoma/src/holosoma/holosoma/eval_agent.py \
+  --checkpoint ~/work/warp-holosoma/holosoma/logs/warp-holosoma/<run>/model_0004000.pt \
+  simulator:mujoco \
+  --training.headless True \
+  --training.num-envs 1 \
+  --training.max-eval-steps 120 \
+  --simulator.config.sim.max-episode-length-s 0.5 \
+  --randomization.ignore-unsupported True \
+  --logger.video.enabled True \
+  --logger.headless-recording True \
+  --logger.video.interval 1 \
+  --logger.video.output-format mp4 \
+  --logger.video.upload-to-wandb False \
+  --logger.video.save-dir ~/work/warp-holosoma/holosoma/logs/video_smoke
+```
+
+Note: with `simulator:mujoco`, use `--randomization.ignore-unsupported True` for MJWarp-trained configs.
+
+The launcher now writes structured run metadata to:
+- `experiments/logs/<date>/feature/holosoma-mjwarp/*.json`
+
+If you use `--detach`, finalise the record after the process exits:
+
+```bash
+python scripts/record_holosoma_run.py finish --output <record.json> --log-path <run.log> --exit-code 0
+```
+
+Detailed workflow:
+
+- `docs/holosoma_mjwarp_2080ti.md`
 
 ## Design choices
 

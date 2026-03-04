@@ -24,6 +24,9 @@ dev = [
   "pytest>=8.0",
   "ruff>=0.3",
 ]
+warp = [
+  "mujoco-warp>=0.1.0",
+]
 sb3 = [
   "stable-baselines3>=2.3",
   "torch>=2.2",
