@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "record_type": "note",
+  "date": "2026-03-03",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "title": "M1 Really Easy 12M Outcome",
+  "body": [
+    "All 4 seeds completed (12M each).",
+    "Aggregate nominal metrics: fall_mean=0.0000, fall_worst=0.0000, vx_median=0.1631, vx_worst=0.1849.",
+    "Gate check (M1): PASS for fall-rate and vx RMSE thresholds.",
+    "Compared with prior true-resume run, stability is perfect but vx tracking is weaker (higher RMSE)."
+  ]
+}

@@ -14,6 +14,7 @@ Do not edit by hand. Add or update JSON logs and re-run the script.
 ## 2026-03-04
 Notes:
 - M2 Warm-Start 40M Outcome: Campaign `m2_warm_m1_40m_20260303T110912Z` reached full 40M timesteps per seed (no early-stop).; Final aggregate (m2_nominal): success_rate median=0.0, command_tracking_success_rate median=0.0, fall_rate median=0.5.; Artifacts and videos migrated to experiments/artifacts and experiments/videos (canonical layout).
+- M2 Candidate-B Stage1 Launch: Launched 4-seed stage1 continuation on <remotehost> from candidate-A update_000300 checkpoints.; Run prefix: m2_candidate_b_stage1_6m_20260303T215447Z; Config: configs/train_ppo_m2_candidate_b_stage1.yaml; 6M timesteps per seed; num_envs=32; 2 jobs per GPU.; Stage2 is prepared via configs/train_ppo_m2_candidate_b_stage2.yaml and launch_m2_candidate_b.sh --stage stage2.
 Runs:
 | Run | Status | Start (UTC) | Duration | Command | Init/Resume | Metrics | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
