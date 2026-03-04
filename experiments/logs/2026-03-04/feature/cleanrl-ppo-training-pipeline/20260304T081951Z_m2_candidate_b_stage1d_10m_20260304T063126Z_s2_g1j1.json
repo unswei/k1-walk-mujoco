@@ -1,0 +1,35 @@
+{
+  "record_type": "run",
+  "date": "2026-03-04",
+  "run_name": "m2_candidate_b_stage1d_10m_20260304T063126Z_s2_g1j1",
+  "status": "completed",
+  "milestone": "m2",
+  "seed": 2,
+  "settings": {
+    "total_timesteps": 10000000
+  },
+  "timing": {
+    "start_utc": "2026-03-04T06:31:26Z",
+    "end_utc": "2026-03-04T07:57:36Z",
+    "duration_s": 5170
+  },
+  "metrics": {
+    "suite": "m2_stage1d_gate",
+    "success_rate": 0.0,
+    "fall_rate": 0.6666666666666666,
+    "command_tracking_success_rate": 0.0,
+    "median_final_pos_error_m": 2.0076602912581842,
+    "median_command_vx_rmse_mps": 0.17760564308200022,
+    "median_command_vy_rmse_mps": 0.1080498705588676,
+    "median_command_yaw_rate_rmse_rps": 0.9874733749393351,
+    "m2_nominal_command_tracking_success_rate": 0.0,
+    "m2_nominal_median_command_yaw_rate_rmse_rps": 0.9931899167607573,
+    "m2_nominal_fall_rate": 0.0
+  },
+  "notes": "Stage1d recovery 10M final eval snapshot.",
+  "paths": {
+    "best_ckpt": "runs/cleanrl_ppo/m2_candidate_b_stage1d_10m_20260304T063126Z_s2_g1j1/checkpoints/best.pt",
+    "latest_ckpt": "runs/cleanrl_ppo/m2_candidate_b_stage1d_10m_20260304T063126Z_s2_g1j1/checkpoints/latest.pt",
+    "eval_metrics_jsonl": "experiments/artifacts/2026-03-04/m2_candidate_b_stage1d_10m_20260304T063126Z/m2_candidate_b_stage1d_10m_20260304T063126Z_s2_g1j1_eval_metrics.jsonl"
+  }
+}
