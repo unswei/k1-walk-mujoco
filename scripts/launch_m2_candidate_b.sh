@@ -43,7 +43,7 @@ usage() {
 Usage: scripts/launch_m2_candidate_b.sh [options]
 
 Options:
-  --stage stage1|stage1b|stage1c|stage2 Stage selector (default: $STAGE)
+  --stage stage1|stage1b|stage1c|stage1d|stage2 Stage selector (default: $STAGE)
   --config PATH                 Training config override
   --run-prefix NAME             Run prefix override
   --total-timesteps N           Timesteps per seed (default: $TOTAL_TIMESTEPS)
@@ -68,6 +68,7 @@ Default stage templates:
   stage1: runs/cleanrl_ppo/m2_warm_m1_40m_20260303T110912Z_s{seed}_g{gpu}j{slot}/checkpoints/update_000300.pt
   stage1b: runs/cleanrl_ppo/m2_warm_m1_40m_20260303T110912Z_s{seed}_g{gpu}j{slot}/checkpoints/update_000300.pt
   stage1c: runs/cleanrl_ppo/m2_warm_m1_40m_20260303T110912Z_s{seed}_g{gpu}j{slot}/checkpoints/update_000300.pt
+  stage1d: runs/cleanrl_ppo/m2_warm_m1_40m_20260303T110912Z_s{seed}_g{gpu}j{slot}/checkpoints/update_000300.pt
   stage2: runs/cleanrl_ppo/<stage1-prefix>_s{seed}_g{gpu}j{slot}/checkpoints/latest.pt
 USAGE
 }
@@ -163,8 +164,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$STAGE" != "stage1" && "$STAGE" != "stage1b" && "$STAGE" != "stage1c" && "$STAGE" != "stage2" ]]; then
-  echo "--stage must be stage1, stage1b, stage1c, or stage2" >&2
+if [[ "$STAGE" != "stage1" && "$STAGE" != "stage1b" && "$STAGE" != "stage1c" && "$STAGE" != "stage1d" && "$STAGE" != "stage2" ]]; then
+  echo "--stage must be stage1, stage1b, stage1c, stage1d, or stage2" >&2
   exit 2
 fi
 if [[ "$LOAD_MODE" != "init" && "$LOAD_MODE" != "resume" ]]; then
@@ -187,6 +188,8 @@ if [[ -z "$CONFIG" ]]; then
     CONFIG="configs/train_ppo_m2_candidate_b_stage1b.yaml"
   elif [[ "$STAGE" == "stage1c" ]]; then
     CONFIG="configs/train_ppo_m2_candidate_b_stage1c.yaml"
+  elif [[ "$STAGE" == "stage1d" ]]; then
+    CONFIG="configs/train_ppo_m2_candidate_b_stage1d.yaml"
   else
     CONFIG="configs/train_ppo_m2_candidate_b_stage2.yaml"
   fi
@@ -199,13 +202,15 @@ if [[ -z "$RUN_PREFIX" ]]; then
     RUN_PREFIX="m2_candidate_b_stage1b_8m"
   elif [[ "$STAGE" == "stage1c" ]]; then
     RUN_PREFIX="m2_candidate_b_stage1c_8m"
+  elif [[ "$STAGE" == "stage1d" ]]; then
+    RUN_PREFIX="m2_candidate_b_stage1d_10m"
   else
     RUN_PREFIX="m2_candidate_b_stage2_6m"
   fi
 fi
 
 if [[ -z "$INIT_CKPT_TEMPLATE" ]]; then
-  if [[ "$STAGE" == "stage1" || "$STAGE" == "stage1b" || "$STAGE" == "stage1c" ]]; then
+  if [[ "$STAGE" == "stage1" || "$STAGE" == "stage1b" || "$STAGE" == "stage1c" || "$STAGE" == "stage1d" ]]; then
     INIT_CKPT_TEMPLATE="runs/cleanrl_ppo/m2_warm_m1_40m_20260303T110912Z_s{seed}_g{gpu}j{slot}/checkpoints/update_000300.pt"
   else
     INIT_CKPT_TEMPLATE="runs/cleanrl_ppo/${STAGE1_PREFIX}_s{seed}_g{gpu}j{slot}/checkpoints/latest.pt"
