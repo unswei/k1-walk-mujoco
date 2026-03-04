@@ -1,0 +1,42 @@
+holdout:
+  - seed: 9101
+    task_mode: velocity
+    command: {vx: 0.65, vy: 0.0, yaw_rate: 0.0}
+    max_steps: 1000
+    command_rmse_thresholds: {vx: 0.25, vy: 0.35, yaw_rate: 0.8}
+  - seed: 9102
+    task_mode: command_tracking
+    command: {vx: 0.45, vy: -0.15, yaw_rate: 0.25}
+    max_steps: 1000
+    command_rmse_thresholds: {vx: 0.25, vy: 0.25, yaw_rate: 0.5}
+  - seed: 9103
+    task_mode: command_tracking
+    command: {vx: 0.35, vy: 0.2, yaw_rate: -0.35}
+    max_steps: 1000
+    command_rmse_thresholds: {vx: 0.25, vy: 0.25, yaw_rate: 0.5}
+  - seed: 9104
+    task_mode: goal_pose
+    goal_xy: [1.6, 0.55]
+    goal_yaw_deg: 95.0
+    max_steps: 1300
+  - seed: 9105
+    task_mode: goal_pose
+    goal_xy: [2.2, -0.35]
+    goal_yaw_deg: -155.0
+    max_steps: 1500
+  - seed: 9106
+    task_mode: goal_pose
+    goal_xy: [2.1, 0.4]
+    goal_yaw_deg: 130.0
+    max_steps: 1300
+    randomization:
+      enabled: true
+      friction_range: [0.85, 1.15]
+      mass_scale_range: [0.9, 1.1]
+      motor_strength_scale_range: [0.9, 1.1]
+      obs_noise_std: 0.005
+      action_latency_steps: [0, 1]
+      push:
+        enabled: true
+        interval_seconds_range: [4.0, 6.5]
+        impulse_xy_range: [0.02, 0.06]

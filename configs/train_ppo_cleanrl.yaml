@@ -1,13 +1,13 @@
-# CleanRL PPO defaults for K1 MuJoCo.
-# Override from CLI as needed, e.g.:
-#   python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --seed 2 --num-envs 16
-
 seed: 1
+milestone: m3
 env_config_path: configs/env_k1_walk.yaml
+eval_suite_path: configs/eval_suites_goal_pose.yaml
+eval_nominal_suite: easy
+eval_stress_suite: stress
+eval_extra_suites: [medium, hard]
 
-# auto -> cuda (if available) -> mps (if available) -> cpu
 device: auto
-total_timesteps: 1000000
+total_timesteps: 20000000
 num_envs: auto
 num_steps: 512
 
@@ -32,4 +32,14 @@ wandb_project: k1-walk-mujoco
 eval_every_updates: 10
 eval_episodes: 1
 save_every_updates: 50
-video: false
+print_every_updates: 5
+nan_watchdog: true
+
+env_overrides:
+  task:
+    mode: goal_pose
+  termination:
+    terminate_on_success_train: false
+    terminate_on_success_eval: true
+  randomization:
+    enabled: false

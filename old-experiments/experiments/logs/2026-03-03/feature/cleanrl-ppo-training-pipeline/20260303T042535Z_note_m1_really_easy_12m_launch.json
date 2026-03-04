@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "record_type": "note",
+  "date": "2026-03-03",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "title": "M1 Really Easy 12M Launch",
+  "body": [
+    "Launched 4-seed M1 campaign on magrathea-1 (deploy), 2 seeds per GPU queue.",
+    "Config: configs/train_ppo_m1_really_easy.yaml (v_x_target=0.25, lower reset noise, higher upright/alive reward).",
+    "Timesteps per seed: 12,000,000; num_envs=32; device=cuda."
+  ]
+}

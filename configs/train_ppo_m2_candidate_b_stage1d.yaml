@@ -1,0 +1,51 @@
+seed: 1
+milestone: m2
+env_config_path: configs/env_k1_walk.yaml
+eval_suite_path: configs/eval_suites_goal_pose.yaml
+eval_nominal_suite: m2_stage1d_gate
+eval_stress_suite: m2_stage1d_gate
+eval_extra_suites: [m2_nominal]
+
+device: auto
+total_timesteps: 10000000
+num_envs: auto
+num_steps: 512
+learning_rate: 0.00015
+gamma: 0.99
+gae_lambda: 0.95
+clip_coef: 0.2
+vf_coef: 0.5
+ent_coef: 0.0
+max_grad_norm: 0.5
+target_kl: null
+update_epochs: 10
+num_minibatches: 32
+anneal_lr: true
+
+run_dir: runs/cleanrl_ppo
+tensorboard: true
+wandb: false
+wandb_project: k1-walk-mujoco
+eval_every_updates: 10
+eval_episodes: 1
+save_every_updates: 50
+print_every_updates: 10
+nan_watchdog: true
+
+env_overrides:
+  task:
+    mode: command_tracking
+  commands:
+    resample_seconds_range: [6.0, 8.0]
+    vx_range_mps: [0.3, 0.5]
+    vy_range_mps: [0.0, 0.0]
+    yaw_rate_range_rps: [-0.12, 0.12]
+  reward:
+    w_command_vx: 2.0
+    w_command_vy: 0.0
+    w_command_yaw_rate: 3.0
+    command_sigma_vx: 0.45
+    command_sigma_vy: 0.25
+    command_sigma_yaw: 0.35
+  randomization:
+    enabled: false

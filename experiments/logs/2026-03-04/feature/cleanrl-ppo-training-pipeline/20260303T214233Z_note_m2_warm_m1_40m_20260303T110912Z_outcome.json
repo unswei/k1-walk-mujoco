@@ -1,0 +1,20 @@
+{
+  "record_type": "note",
+  "date": "2026-03-04",
+  "title": "M2 Warm-Start 40M Outcome",
+  "body": [
+    "Campaign `m2_warm_m1_40m_20260303T110912Z` reached full 40M timesteps per seed (no early-stop).",
+    "Final aggregate (m2_nominal): success_rate median=0.0, command_tracking_success_rate median=0.0, fall_rate median=0.5.",
+    "Artifacts and videos migrated to experiments/artifacts and experiments/videos (canonical layout)."
+  ],
+  "campaign": {
+    "id": "m2_warm_m1_40m_20260303T110912Z",
+    "branch": "feature/cleanrl-ppo-training-pipeline",
+    "notes": "Warm-start M2 from M1 best checkpoints; 4 seeds on 2 GPUs."
+  },
+  "paths": {
+    "final_summary": "experiments/artifacts/2026-03-04/feature/cleanrl-ppo-training-pipeline/m2_warm_m1_40m_20260303T110912Z/m2_warm_m1_40m_20260303T110912Z_final_summary.json",
+    "artifacts_dir": "experiments/artifacts/2026-03-04/feature/cleanrl-ppo-training-pipeline/m2_warm_m1_40m_20260303T110912Z",
+    "videos_dir": "experiments/videos/2026-03-04/feature/cleanrl-ppo-training-pipeline"
+  }
+}

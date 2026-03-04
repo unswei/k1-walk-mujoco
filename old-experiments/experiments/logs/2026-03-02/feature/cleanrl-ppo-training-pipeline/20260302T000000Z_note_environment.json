@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "record_type": "note",
+  "date": "2026-03-02",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "title": "Environment",
+  "body": [
+    "Remote host: magrathea-1 (deploy)",
+    "Repo path on host: /home/deploy/work/k1-walk-mujoco",
+    "Branch: feature/cleanrl-ppo-training-pipeline",
+    "GPUs: 2x RTX 2080 Ti (11 GB each)"
+  ]
+}

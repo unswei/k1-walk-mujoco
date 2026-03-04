@@ -45,16 +45,87 @@ Enable W&B optionally:
 uv pip install -e '.[cleanrl,dev,wandb]'
 ```
 
-Run headless training with TensorBoard logs:
+### Milestone configs
+
+Milestone training configs are provided in:
+
+- `configs/train_ppo_m0.yaml`
+- `configs/train_ppo_m1.yaml`
+- `configs/train_ppo_m2.yaml`
+- `configs/train_ppo_m3.yaml`
+- `configs/train_ppo_m4.yaml`
+- `configs/train_ppo_m5.yaml`
+
+Default env/task schema lives in `configs/env_k1_walk.yaml`.
+
+### Training commands
+
+Run headless training for a milestone:
+
+```bash
+python scripts/train_cleanrl_ppo.py --milestone m3
+```
+
+Run a short smoke job:
+
+```bash
+python scripts/train_cleanrl_ppo.py --milestone m0 --total-timesteps 512 --num-envs 1 --device cpu --run-name smoke
+```
+
+Train from an explicit config:
 
 ```bash
 python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml
 ```
 
-Run a short smoke training job:
+Warm-start from a previous checkpoint:
 
 ```bash
-python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --total-timesteps 512 --num-envs 1 --device cpu --run-name smoke
+python scripts/train_cleanrl_ppo.py --milestone m4 --init-ckpt runs/cleanrl_ppo/<m3_run>/checkpoints/best_nominal.pt
+```
+
+Evaluate a checkpoint on fixed eval suites:
+
+```bash
+python scripts/train_cleanrl_ppo.py --milestone m3 --eval-only --ckpt runs/cleanrl_ppo/<run>/checkpoints/latest.pt --eval-suite easy
+```
+
+Run enforced 3-seed milestone gating:
+
+```bash
+python scripts/run_milestones.py --milestone m3 --seeds 1,2,3
+```
+
+Auto-progress milestones when gates pass:
+
+```bash
+python scripts/run_milestones.py --milestone m0 --auto-progress --until-milestone m5 --seeds 1,2,3
+```
+
+`run_milestones.py` now applies transition anti-forgetting by default on milestone handoff:
+- first 20% of the new milestone runs with mixed previous-task episodes (`--transition-mix-fraction 0.2`)
+- previous-task sampling probability defaults to `0.35` (`--transition-mix-prob 0.35`)
+
+Disable this behavior if needed:
+
+```bash
+python scripts/run_milestones.py --milestone m2 --auto-progress --disable-transition-mix
+```
+
+Hidden holdout evaluation is also enabled by default and runs against:
+- suite file: `configs/eval_suites_goal_pose_holdout.yaml`
+- suite name: `holdout`
+
+Disable holdout evaluation:
+
+```bash
+python scripts/run_milestones.py --milestone m3 --disable-holdout-eval
+```
+
+Aggregate 3-seed milestone results and evaluate promotion gates:
+
+```bash
+python scripts/milestone_report.py --milestone m3 --runs runs/cleanrl_ppo/<run_seed1> runs/cleanrl_ppo/<run_seed2> runs/cleanrl_ppo/<run_seed3>
 ```
 
 Rollout random policy:
@@ -63,10 +134,22 @@ Rollout random policy:
 python scripts/rollout.py --episodes 1
 ```
 
+Rollout parameterised gait baseline (no learned policy):
+
+```bash
+python scripts/rollout.py --controller param_gait_15 --gait-config configs/gait_param_15.yaml --episodes 1
+```
+
+Rollout in goal-pose mode with explicit target:
+
+```bash
+python scripts/rollout.py --episodes 1 --task-mode goal_pose --goal-x 1.0 --goal-y 0.2 --goal-yaw-deg 30 --policy zero
+```
+
 Rollout checkpoint with rendering:
 
 ```bash
-mjpython scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best.pt --render --episodes 1 --deterministic
+mjpython scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best_nominal.pt --render --episodes 1 --deterministic --task-mode goal_pose
 ```
 
 On macOS, MuJoCo viewer rendering requires `mjpython` (not plain `python`).
@@ -89,8 +172,26 @@ mjpython -c "import mujoco; print('mjpython ok')"
 Headless video recording:
 
 ```bash
-python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best.pt --record runs/cleanrl_ppo/<run>/rollout.mp4 --episodes 1 --deterministic
+python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best_nominal.pt --record runs/cleanrl_ppo/<run>/rollout.mp4 --episodes 1 --deterministic --task-mode goal_pose
 ```
+
+Headless video with body-tracking camera:
+
+```bash
+python scripts/rollout.py --ckpt runs/cleanrl_ppo/<run>/checkpoints/best_nominal.pt --record runs/cleanrl_ppo/<run>/rollout_track.mp4 --record-camera track --track-body base --episodes 1 --deterministic
+```
+
+Optimise the 15-parameter gait with parallel random-search successive halving:
+
+```bash
+python scripts/optimise_gait_params.py --config configs/optimise_gait.yaml
+```
+
+Artifacts are written under `runs/gait_optim/<run_name>/` including:
+- `best_params.yaml`
+- `summary.json`
+- `candidates.jsonl`
+- `tb/` TensorBoard logs
 
 Device selection for training:
 
@@ -136,15 +237,33 @@ Sync a remote run prefix into local artifacts:
 scripts/sync_remote_experiment.sh --remote deploy@<remotehost> --prefix <run_prefix>
 ```
 
+Staged M2 continuation launch (candidate-B):
+
+```bash
+scripts/launch_m2_candidate_b.sh --stage stage1
+scripts/launch_m2_candidate_b.sh --stage stage2 --stage1-prefix <stage1_run_prefix>
+```
+
+Warm-start provenance and GPU-utilization knobs:
+
+```bash
+scripts/launch_m2_candidate_b.sh --stage stage1 --dry-run
+scripts/launch_m2_candidate_b.sh --stage stage1 --load-mode init --eval-every-updates 20 --num-envs 32 --jobs-per-gpu 2
+```
+
+The launcher writes `runs/cleanrl_ppo/campaign_logs/<run_prefix>_launch_manifest.tsv` with
+seed/GPU/checkpoint mapping and checkpoint existence checks.
+
 Detailed conventions live in `experiments/README.md`.
 Full process steps live in `docs/experiment_workflow.md`.
+
 ### Multi-GPU recipe (remote Linux box)
 
 Run two independent seeds, one process per GPU:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --seed 1 --num-envs 16 --run-name k1_ppo_s1_gpu0
-CUDA_VISIBLE_DEVICES=1 python scripts/train_cleanrl_ppo.py --config configs/train_ppo_cleanrl.yaml --seed 2 --num-envs 16 --run-name k1_ppo_s2_gpu1
+CUDA_VISIBLE_DEVICES=0 python scripts/train_cleanrl_ppo.py --milestone m3 --seed 1 --num-envs 16 --run-name k1_m3_s1_gpu0
+CUDA_VISIBLE_DEVICES=1 python scripts/train_cleanrl_ppo.py --milestone m3 --seed 2 --num-envs 16 --run-name k1_m3_s2_gpu1
 ```
 
 Suggested remote workflow:

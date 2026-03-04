@@ -9,15 +9,59 @@ env:
   episode_seconds: 20.0
   reset_noise_qpos_std: 0.01
   reset_noise_qvel_std: 0.05
+  reset_settle_steps: 20
   v_x_target: 0.5
+
+task:
+  mode: velocity # velocity | command_tracking | goal_pose
+  goal:
+    success_pos_tol_m: 0.20
+    success_yaw_tol_deg: 12.0
+    max_goal_radius_m: 2.5
+    min_goal_radius_m: 0.5
+    goal_reach_hold_steps: 10
+    min_progress_for_bonus_m: 0.05
+
+commands:
+  resample_seconds_range: [2.0, 4.0]
+  vx_range_mps: [0.2, 0.8]
+  vy_range_mps: [-0.3, 0.3]
+  yaw_rate_range_rps: [-0.8, 0.8]
+
+randomization:
+  enabled: false
+  friction_range: [1.0, 1.0]
+  mass_scale_range: [1.0, 1.0]
+  motor_strength_scale_range: [1.0, 1.0]
+  obs_noise_std: 0.0
+  action_latency_steps: 0
+  push:
+    enabled: false
+    interval_seconds_range: [5.0, 8.0]
+    impulse_xy_range: [0.0, 0.0]
 
 termination:
   min_base_height_m: 0.45
   max_tilt_rad: 0.9
+  terminate_on_success_train: false
+  terminate_on_success_eval: true
 
 reward:
+  velocity_sigma: 0.5
+  command_sigma_vx: 0.5
+  command_sigma_vy: 0.4
+  command_sigma_yaw: 0.8
+  goal_yaw_sigma_rad: 0.35
+
   w_forward_velocity: 2.0
+  w_command_vx: 2.0
+  w_command_vy: 0.6
+  w_command_yaw_rate: 0.6
   w_upright: 1.0
   w_joint_velocity_penalty: 0.02
   w_torque_penalty: 0.01
-  velocity_sigma: 0.5
+  w_progress: 8.0
+  w_goal_bonus: 8.0
+  w_goal_yaw: 0.8
+  w_action_smooth: 0.05
+  w_alive: 0.05

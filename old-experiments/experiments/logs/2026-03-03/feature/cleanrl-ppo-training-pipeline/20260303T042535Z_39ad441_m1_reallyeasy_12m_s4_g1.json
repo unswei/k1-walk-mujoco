@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "record_type": "run",
+  "run_name": "m1_reallyeasy_12m_s4_g1",
+  "date": "2026-03-03",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "commit": "39ad441",
+  "campaign": {
+    "name": "M1 Really Easy 12M (4 seeds)",
+    "goal": "run a very easy M1 velocity curriculum on 4 seeds for 12M steps on magrathea-1"
+  },
+  "milestone": "m1",
+  "seed": 4,
+  "settings": {
+    "total_timesteps": 12000000,
+    "num_envs": 32,
+    "device": "cuda",
+    "learning_rate": 0.0003,
+    "config": "configs/train_ppo_m1_really_easy.yaml"
+  },
+  "command": "train_cleanrl_ppo.py --config configs/train_ppo_m1_really_easy.yaml --seed 4 --device cuda --num-envs 32 --total-timesteps 12000000 --print-every-updates 20 --run-name m1_reallyeasy_12m_s4_g1",
+  "init": "scratch",
+  "status": "completed",
+  "timing": {
+    "start_utc": "2026-03-03T06:22:50Z",
+    "end_utc": "2026-03-03T08:20:20Z",
+    "start_local": "Tue Mar 3 17:22:50 AEDT 2026",
+    "end_local": "Tue Mar 3 19:20:20 AEDT 2026",
+    "duration_s": 7050
+  },
+  "notes": "Completed. Meets M1 stability gate (fall_rate < 0.10) and velocity RMSE gate (vx_rmse < 0.25) on nominal suite.",
+  "metrics": {
+    "suite": "m1_nominal_stage1",
+    "fall_rate": 0.0,
+    "vx_rmse": 0.1635
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "record_type": "note",
+  "date": "2026-03-04",
+  "title": "M2 Candidate-B Stage1d Outcome",
+  "body": [
+    "Campaign `m2_candidate_b_stage1d_10m_20260304T063126Z` completed 10M timesteps per seed with the stage1d recovery curriculum (vy fixed to 0, narrow yaw-rate range, slower command resampling, randomization off).",
+    "Runtime: ~1.44h wall-clock from 2026-03-04T06:31:26Z to 2026-03-04T07:57:36Z.",
+    "Final aggregate (m2_stage1d_gate): success_rate median=0.0000, command_tracking_success_rate median=0.0000, fall_rate median=0.3333.",
+    "Final aggregate errors (m2_stage1d_gate): median_command_vx_rmse_mps=0.1588, median_command_vy_rmse_mps=0.1183, median_command_yaw_rate_rmse_rps=1.0238, median_final_pos_error_m=4.9073.",
+    "Reference on m2_nominal at final eval: command_tracking_success_rate median=0.0000, median_command_yaw_rate_rmse_rps=1.0472, fall_rate median=0.6667."
+  ],
+  "campaign": {
+    "id": "m2_candidate_b_stage1d_10m_20260304T063126Z",
+    "branch": "feature/cleanrl-ppo-training-pipeline",
+    "notes": "4 seeds, 2 jobs per GPU, 32 envs/job, init warm-start from candidate-A update_000300."
+  },
+  "paths": {
+    "artifacts_dir": "experiments/artifacts/2026-03-04/m2_candidate_b_stage1d_10m_20260304T063126Z",
+    "launcher": "scripts/launch_m2_candidate_b.sh",
+    "config": "configs/train_ppo_m2_candidate_b_stage1d.yaml",
+    "remote_prefix_file": "runs/cleanrl_ppo/campaign_logs/latest_m2_candidate_b_stage1d_prefix.txt"
+  }
+}

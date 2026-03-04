@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "record_type": "run",
+  "run_name": "probe_m1_gpu0",
+  "date": "2026-03-02",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "campaign": {
+    "name": "Throughput Probes",
+    "goal": "estimate realistic wall-clock speed before long campaigns"
+  },
+  "milestone": "m1",
+  "seed": 1,
+  "settings": {
+    "total_timesteps": 200000,
+    "num_envs": 16,
+    "device": "cuda"
+  },
+  "command": "train_cleanrl_ppo.py --milestone m1 --total-timesteps 200000 --num-envs 16 --device cuda --seed 1",
+  "init": "scratch",
+  "status": "completed",
+  "timing": {
+    "duration_s": 177.92
+  },
+  "metrics": {
+    "suite": "m1_nominal",
+    "fall_rate": 1.0,
+    "median_command_vx_rmse_mps": 0.3708
+  },
+  "termination_reasons": {
+    "base_height": "all"
+  }
+}

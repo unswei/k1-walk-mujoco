@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "record_type": "note",
+  "date": "2026-03-03",
+  "branch": "feature/cleanrl-ppo-training-pipeline",
+  "title": "True-Resume +10M Outcome",
+  "body": [
+    "New true-resume +10M @ LR=1e-4 campaign completed on all 4 seeds.",
+    "Aggregate vs baseline 10M: fall_mean 0.1667 -> 0.0000, fall_worst 0.3333 -> 0.0000, vx_median 0.1284 -> 0.1005.",
+    "Aggregate vs mixed +2M continuation: fall_mean 0.3333 -> 0.0000, vx_median 0.2085 -> 0.1005.",
+    "Weak-seed recovery: s3 fall_rate 0.3333 -> 0.0000 and vx_rmse 0.1842 -> 0.1002; s4 fall_rate 0.3333 -> 0.0000 and vx_rmse 0.1502 -> 0.0942."
+  ]
+}
